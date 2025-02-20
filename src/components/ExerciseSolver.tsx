@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useOpenAIStore } from '../store/openai';
-import { Upload, SendHorizontal, RefreshCw, Calculator, ChevronRight, Download, X, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Upload, SendHorizontal, RefreshCw, ChevronRight, Download, X, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import { BlockMath } from 'react-katex';
 import { useDropzone } from 'react-dropzone';
 
@@ -48,12 +48,12 @@ interface Solution {
   finalAnswer: string;
   relatedConcepts: string[];
   difficulty: 'Easy' | 'Medium' | 'Hard';
-  practiceProblems?: {
+  practiceProblems: {
     question: string;
     solution: string;
     difficulty: 'Easy' | 'Medium' | 'Hard';
   }[];
-  furtherReading?: {
+  furtherReading: {
     topic: string;
     description: string;
     resources: string[];
@@ -71,7 +71,6 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
   const [examSubmissions, setExamSubmissions] = useState<ExamSubmission[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [loading, setLoading] = useState(false);
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [answerFile, setAnswerFile] = useState<File | null>(null);
   const [expandedSteps, setExpandedSteps] = useState<{ solutionIndex: number; stepIndex: number }[]>([]);
   const service = useOpenAIStore((state) => state.service);
@@ -173,14 +172,10 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
     try {
       let answerText = currentAnswer;
       
-      // If there's an answer file, we need to extract its text first
       if (answerFile) {
-        // Here you would extract text from the file
-        // For now, we'll just use the filename
         answerText = `[Answer from file: ${answerFile.name}] ${currentAnswer}`;
       }
       
-      // Use DeepSeek API for enhanced answer analysis
       const response = await fetch(DEEPSEEK_API_URL, {
         method: 'POST',
         headers: {
@@ -237,10 +232,6 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
       const data = await response.json();
       const feedback = JSON.parse(data.choices[0].message.content);
 
-      // Remove unused imports
-      import { Upload, SendHorizontal, RefreshCw, ChevronRight, Download, X, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
-
-      // Fix the setExamSubmissions type issue
       setExamSubmissions(prev => [...prev, {
         question,
         studentAnswer: answerText,
@@ -248,11 +239,9 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
         feedback
       }]);
 
-      // Reset form
       setQuestion('');
       setCurrentAnswer('');
       setAnswerFile(null);
-      setUploadedImage(null);
 
     } catch (error) {
       console.error('Failed to analyze answer:', error);

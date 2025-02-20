@@ -84,7 +84,6 @@ function App() {
     onResize: (width) => {
       if (!showLeftPanel) return;
       setLeftPanelWidth(width);
-      setRightPanelWidth(window.innerWidth - width - 32);
     },
   });
 
@@ -94,7 +93,6 @@ function App() {
       if (leftPanelWidth > maxLeftWidth) {
         setLeftPanelWidth(showLeftPanel ? maxLeftWidth : 0);
       }
-      setRightPanelWidth(window.innerWidth - (showLeftPanel ? leftPanelWidth : 0) - 32);
     };
 
     window.addEventListener('resize', handleResize);

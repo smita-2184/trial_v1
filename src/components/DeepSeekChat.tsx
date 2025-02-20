@@ -268,12 +268,12 @@ function ChatMessage({ message, isStreaming }: ChatMessageProps) {
             h1: ({ children }) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
             h2: ({ children }) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
             h3: ({ children }) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
-            code: ({ inline, children }) => 
+            code: ({ inline, children, className }) => 
               inline ? (
-                <code className="bg-[#2C2C2E] px-1 rounded">{children}</code>
+                <code className="bg-[#2C2C2E] px-1 rounded">{String(children)}</code>
               ) : (
                 <pre className="bg-[#2C2C2E] p-4 rounded-lg overflow-x-auto">
-                  <code>{children}</code>
+                  <code>{String(children)}</code>
                 </pre>
               ),
             blockquote: ({ children }) => (

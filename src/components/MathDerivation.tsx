@@ -13,8 +13,8 @@ interface VisualizationData {
   fn?: (x: number) => number;
   start?: [number, number];
   end?: [number, number];
-  x?: number;
-  y?: number;
+  angle?: number;
+  scale?: number;
 }
 
 interface DerivationStep {
@@ -68,7 +68,6 @@ export function MathDerivation() {
   const animationSpeed = 1;
   const [currentTransform, setCurrentTransform] = useState({ x: 0, y: 0, angle: 0, scale: 1 });
   const [showGeoGebra, setShowGeoGebra] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number>();
   const service = useOpenAIStore((state) => state.service);
 
