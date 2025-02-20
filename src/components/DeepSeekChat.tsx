@@ -488,9 +488,7 @@ export function DeepSeekChat() {
             </div>
           </div>
         )}
-        {!state.isLoading && state.messages.length > 0 && (
-          audioFadeRef.current?.()
-        )}
+        {!state.isLoading && state.messages.length > 0 && audioFadeRef.current && audioFadeRef.current()}
         <div ref={messagesEndRef} />
       </div>
 

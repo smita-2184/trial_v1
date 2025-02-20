@@ -16,6 +16,15 @@ interface ExamSubmission {
     comments: string[];
     corrections: string[];
     suggestions: string[];
+    conceptualUnderstanding?: {
+      strengths: string[];
+      weaknesses: string[];
+    };
+    learningResources?: {
+      topic: string;
+      description: string;
+      type: 'video' | 'article' | 'exercise';
+    }[];
   };
 }
 
@@ -27,10 +36,28 @@ interface Solution {
     explanation: string;
     latex?: string;
     hint?: string;
+    visualization?: {
+      type: 'graph' | 'diagram' | 'plot';
+      data: {
+        points?: [number, number][];
+        functions?: string[];
+        labels?: string[];
+      };
+    };
   }[];
   finalAnswer: string;
   relatedConcepts: string[];
   difficulty: 'Easy' | 'Medium' | 'Hard';
+  practiceProblems?: {
+    question: string;
+    solution: string;
+    difficulty: 'Easy' | 'Medium' | 'Hard';
+  }[];
+  furtherReading?: {
+    topic: string;
+    description: string;
+    resources: string[];
+  }[];
 }
 
 interface ExerciseSolverProps {
@@ -210,10 +237,14 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
       const data = await response.json();
       const feedback = JSON.parse(data.choices[0].message.content);
 
+      // Remove unused imports
+      import { Upload, SendHorizontal, RefreshCw, ChevronRight, Download, X, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+
+      // Fix the setExamSubmissions type issue
       setExamSubmissions(prev => [...prev, {
         question,
         studentAnswer: answerText,
-        answerFile,
+        answerFile: answerFile || undefined,
         feedback
       }]);
 

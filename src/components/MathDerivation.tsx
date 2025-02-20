@@ -7,33 +7,25 @@ import { Calculator } from 'lucide-react';
 import 'mafs/core.css';
 import * as math from 'mathjs';
 
+interface VisualizationData {
+  type: 'text' | 'function' | 'vector';
+  content?: string;
+  fn?: (x: number) => number;
+  start?: [number, number];
+  end?: [number, number];
+  x?: number;
+  y?: number;
+}
+
 interface DerivationStep {
   latex: string;
   explanation: string;
   visualization?: {
     type: 'function' | 'transform' | 'vector' | 'point';
     data: {
-      before: {
-        type: 'text' | 'function' | 'vector';
-        content?: string;
-        fn?: (x: number) => number;
-        start?: [number, number];
-        end?: [number, number];
-      };
-      after: {
-        type: 'text' | 'function' | 'vector';
-        content?: string;
-        fn?: (x: number) => number;
-        start?: [number, number];
-        end?: [number, number];
-      };
-      intermediates?: Array<{
-        type: 'text' | 'function' | 'vector';
-        content?: string;
-        fn?: (x: number) => number;
-        start?: [number, number];
-        end?: [number, number];
-      }>;
+      before: VisualizationData;
+      after: VisualizationData;
+      intermediates?: VisualizationData[];
     };
     transformType?: 'translation' | 'rotation' | 'scale';
   };
@@ -76,7 +68,7 @@ export function MathDerivation() {
   const animationSpeed = 1;
   const [currentTransform, setCurrentTransform] = useState({ x: 0, y: 0, angle: 0, scale: 1 });
   const [showGeoGebra, setShowGeoGebra] = useState(false);
-  const _containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number>();
   const service = useOpenAIStore((state) => state.service);
 
@@ -246,8 +238,6 @@ export function MathDerivation() {
     }
   };
 
-  // Rest of the code remains the same...
-
   const generateDerivation = async (expression: string) => {
     if (!service) return;
     
@@ -347,8 +337,6 @@ export function MathDerivation() {
       setLoading(false);
     }
   };
-
-  // Rest of the code remains the same...
 
   return (
     <div className="h-full flex flex-col">

@@ -41,7 +41,6 @@ function App() {
 
   const [showLeftPanel, setShowLeftPanel] = React.useState(true);
   const [leftPanelWidth, setLeftPanelWidth] = React.useState(350);
-  const [rightPanelWidth, setRightPanelWidth] = React.useState(window.innerWidth - (showLeftPanel ? 350 : 0) - 32); // 32px for padding
   const [pdfText, setPdfText] = React.useState<string>('');
   const leftResizeRef = React.useRef<HTMLDivElement>(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
