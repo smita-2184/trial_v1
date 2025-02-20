@@ -249,16 +249,18 @@ interface ChatMessageProps {
 const API_KEY = 'sk-84bedb070f484479be0d09dca0bf142b';
 const API_URL = 'https://api.deepseek.com/v1/chat/completions';
 
+interface CodeProps {
+  inline?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}
+
 function ChatMessage({ message, isStreaming }: ChatMessageProps) {
   const [showThoughts, setShowThoughts] = useState(false);
 
   return (
     <div
-      className={`p-4 rounded-lg ${
-        message.role === 'user' 
-          ? 'bg-[#2C2C2E] ml-12' 
-          : 'bg-[#3A3A3C] mr-12'
-      }`}
+      className={`p-4 rounded-lg ${message.role === 'user' ? 'bg-[#2C2C2E] ml-12' : 'bg-[#3A3A3C] mr-12'}`}
     >
       <div className="prose prose-invert max-w-none">
         <ReactMarkdown
@@ -268,7 +270,7 @@ function ChatMessage({ message, isStreaming }: ChatMessageProps) {
             h1: ({ children }) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
             h2: ({ children }) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
             h3: ({ children }) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
-            code: ({ inline, children, className }) => 
+            code: ({ inline, children, className }: CodeProps) => 
               inline ? (
                 <code className="bg-[#2C2C2E] px-1 rounded">{String(children)}</code>
               ) : (
@@ -277,9 +279,7 @@ function ChatMessage({ message, isStreaming }: ChatMessageProps) {
                 </pre>
               ),
             blockquote: ({ children }) => (
-              <blockquote className="border-l-4 border-blue-500 pl-4 italic">
-                {children}
-              </blockquote>
+              <blockquote className="border-l-4 border-blue-500 pl-4 italic">{children}</blockquote>
             ),
           }}
         >
@@ -488,7 +488,9 @@ export function DeepSeekChat() {
             </div>
           </div>
         )}
-        {!state.isLoading && state.messages.length > 0 && audioFadeRef.current && audioFadeRef.current()}
+        {!state.isLoading && state.messages.length > 0 && audioFadeRef.current && (
+          <>{audioFadeRef.current()}</>
+        )}
         <div ref={messagesEndRef} />
       </div>
 

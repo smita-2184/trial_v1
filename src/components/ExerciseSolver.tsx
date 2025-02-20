@@ -72,6 +72,7 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [loading, setLoading] = useState(false);
   const [answerFile, setAnswerFile] = useState<File | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [expandedSteps, setExpandedSteps] = useState<{ solutionIndex: number; stepIndex: number }[]>([]);
   const service = useOpenAIStore((state) => state.service);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -328,7 +329,9 @@ Guidelines:
         }],
         finalAnswer: "Error occurred",
         relatedConcepts: [],
-        difficulty: "Medium"
+        difficulty: "Medium",
+        practiceProblems: [],
+        furtherReading: []
       }, ...prev]);
     } finally {
       setLoading(false);
