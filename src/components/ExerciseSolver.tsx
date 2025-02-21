@@ -114,17 +114,6 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
     }
   }, [documentText, service]);
 
-  const onDrop = (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        console.log('File uploaded:', file.name);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const onAnswerFileDrop = (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (file) {
