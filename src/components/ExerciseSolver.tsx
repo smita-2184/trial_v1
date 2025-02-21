@@ -27,12 +27,6 @@ interface FeedbackComment {
   type: string;
 }
 
-interface ExamFeedback {
-  comments: FeedbackComment[];
-  corrections: string[];
-  suggestions: string[];
-}
-
 interface Solution {
   question: string;
   steps: {
@@ -63,7 +57,6 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
   const [loading, setLoading] = useState(false);
   const [answerFile, setAnswerFile] = useState<File | null>(null);
   const [expandedSteps, setExpandedSteps] = useState<{ solutionIndex: number; stepIndex: number }[]>([]);
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const service = useOpenAIStore((state) => state.service);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -126,7 +119,7 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
     if (file) {
       const reader = new FileReader();
       reader.onload = () => {
-        setUploadedImage(reader.result as string);
+        console.log('File uploaded:', file.name);
       };
       reader.readAsDataURL(file);
     }
@@ -138,14 +131,6 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
       setAnswerFile(file);
     }
   };
-
-  const { getRootProps, getInputProps } = useDropzone({
-    onDrop,
-    accept: {
-      'image/*': ['.png', '.jpg', '.jpeg']
-    },
-    maxFiles: 1
-  });
 
   const { getRootProps: getAnswerRootProps, getInputProps: getAnswerInputProps } = useDropzone({
     onDrop: onAnswerFileDrop,
@@ -238,8 +223,6 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
       setQuestion('');
       setCurrentAnswer('');
       setAnswerFile(null);
-      setUploadedImage(null);
-
     } catch (error) {
       console.error('Failed to analyze answer:', error);
     } finally {
