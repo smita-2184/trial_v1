@@ -16,6 +16,23 @@ interface ExamSubmission {
 
 type Mode = 'exercise' | 'exam';
 
+interface PracticeProblem {
+  question: string;
+  answer: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+}
+
+interface FeedbackComment {
+  text: string;
+  type: string;
+}
+
+interface ExamFeedback {
+  comments: FeedbackComment[];
+  corrections: string[];
+  suggestions: string[];
+}
+
 interface Solution {
   question: string;
   steps: {
@@ -26,10 +43,7 @@ interface Solution {
   finalAnswer: string;
   relatedConcepts: string[];
   difficulty: 'Easy' | 'Medium' | 'Hard';
-  practiceProblems?: Array<{
-    question: string;
-    answer: string;
-  }>;
+  practiceProblems?: PracticeProblem[];
   furtherReading?: Array<{
     title: string;
     url: string;
@@ -49,6 +63,7 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
   const [loading, setLoading] = useState(false);
   const [answerFile, setAnswerFile] = useState<File | null>(null);
   const [expandedSteps, setExpandedSteps] = useState<{ solutionIndex: number; stepIndex: number }[]>([]);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const service = useOpenAIStore((state) => state.service);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -212,10 +227,10 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
       const data = await response.json();
       const feedback = JSON.parse(data.choices[0].message.content);
 
-      setExamSubmissions(prev => [...prev, {
+      setExamSubmissions((prev: ExamSubmission[]) => [...prev, {
         question,
         studentAnswer: answerText,
-        answerFile,
+        answerFile: answerFile || undefined,
         feedback
       }]);
 
@@ -705,12 +720,12 @@ Difficulty: ${solution.difficulty}`;
 
                   {/* Comments */}
                   <div className="space-y-4">
-                    {submission.feedback.comments.map((comment, i) => (
+                    {submission.feedback.comments.map((comment: FeedbackComment, i: number) => (
                       <div key={i} className="flex items-start gap-2">
                         <div className="p-1 rounded-full bg-blue-500/20">
                           <FileText className="w-4 h-4 text-blue-400" />
                         </div>
-                        <p className="text-gray-300">{comment}</p>
+                        <p className="text-gray-300">{comment.text}</p>
                       </div>
                     ))}
                   </div>
@@ -720,7 +735,7 @@ Difficulty: ${solution.difficulty}`;
                     <div className="mt-4">
                       <h4 className="font-medium mb-2">Corrections</h4>
                       <ul className="space-y-2">
-                        {submission.feedback.corrections.map((correction, i) => (
+                        {submission.feedback.corrections.map((correction: string, i: number) => (
                           <li key={i} className="flex items-start gap-2">
                             <div className="p-1 rounded-full bg-red-500/20">
                               <AlertCircle className="w-4 h-4 text-red-400" />
@@ -737,7 +752,7 @@ Difficulty: ${solution.difficulty}`;
                     <div className="mt-4">
                       <h4 className="font-medium mb-2">Suggestions</h4>
                       <ul className="space-y-2">
-                        {submission.feedback.suggestions.map((suggestion, i) => (
+                        {submission.feedback.suggestions.map((suggestion: string, i: number) => (
                           <li key={i} className="flex items-start gap-2">
                             <div className="p-1 rounded-full bg-green-500/20">
                               <CheckCircle2 className="w-4 h-4 text-green-400" />
