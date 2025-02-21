@@ -85,7 +85,6 @@ function App() {
     onResize: (width) => {
       if (!showLeftPanel) return;
       setLeftPanelWidth(width);
-      setRightPanelWidth(window.innerWidth - width - 32);
     },
   });
 
@@ -105,20 +104,6 @@ function App() {
   const toggleLeftPanel = () => {
     setShowLeftPanel(prev => !prev);
     setRightPanelWidth(window.innerWidth - (showLeftPanel ? 0 : leftPanelWidth) - 32);
-  };
-
-  const handleResizeRight = (e: MouseEvent) => {
-    if (!isResizingRight) return;
-    
-    const newWidth = window.innerWidth - e.clientX;
-    if (newWidth > 200 && newWidth < window.innerWidth - 200) {
-      setRightPanelWidth(newWidth);
-    }
-  };
-
-  const rightPanelStyle = {
-    width: `${rightPanelWidth}px`,
-    // ... other styles
   };
 
   if (loading) {

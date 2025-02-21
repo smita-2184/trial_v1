@@ -5,6 +5,8 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { Volume2, VolumeX } from 'lucide-react';
+import remarkGfm from 'remark-gfm';
+import rehypePrism from 'rehype-prism-plus';
 
 interface Particle {
   x: number;
@@ -262,20 +264,22 @@ function ChatMessage({ message, isStreaming }: ChatMessageProps) {
     >
       <div className="prose prose-invert max-w-none">
         <ReactMarkdown
-          remarkPlugins={[remarkMath]}
-          rehypePlugins={[rehypeKatex]}
+          remarkPlugins={[remarkMath, remarkGfm]}
+          rehypePlugins={[rehypeKatex, rehypePrism]}
           components={{
             h1: ({ children }) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
             h2: ({ children }) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
             h3: ({ children }) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
-            code: ({ inline, children }: CodeProps) => 
-              inline ? (
-                <code className="bg-[#2C2C2E] px-1 rounded">{children}</code>
-              ) : (
-                <pre className="bg-[#2C2C2E] p-4 rounded-lg overflow-x-auto">
-                  <code>{children}</code>
+            code: ({ inline, className, children }: CodeProps) => {
+              const match = /language-(\w+)/.exec(className || '');
+              return !inline && match ? (
+                <pre className={className}>
+                  <code className={className}>{children}</code>
                 </pre>
-              ),
+              ) : (
+                <code className={className}>{children}</code>
+              );
+            },
             blockquote: ({ children }) => (
               <blockquote className="border-l-4 border-blue-500 pl-4 italic">
                 {children}
@@ -529,5 +533,6 @@ export function DeepSeekChat() {
 
 interface CodeProps {
   inline?: boolean;
-  children: React.ReactNode;
+  className?: string;
+  children: string;
 }
