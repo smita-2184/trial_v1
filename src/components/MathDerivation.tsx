@@ -62,6 +62,25 @@ const EXAMPLE_DERIVATIONS = [
   }
 ];
 
+interface PointProps {
+  x: number;
+  y: number;
+  color: string;
+  size?: number; // Add size as optional prop
+}
+
+interface DrawableElement {
+  type: "function" | "text" | "vector";
+  content?: string;
+  fn?: ((x: number) => number);
+  start?: [number, number];
+  end?: [number, number];
+  x?: number;
+  y?: number;
+  angle?: number;
+  scale?: number;
+}
+
 export function MathDerivation() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);

@@ -4,15 +4,15 @@ import { collection, query, where, getDocs, doc, setDoc, serverTimestamp } from 
 
 interface User {
   id: string;
+  role: string;
+  createdAt: any;
+  lastLogin: any;
   username: string;
-  password: string;
   course: string;
   gender: string;
   major: string;
-  role: string;
   semester: number;
-  createdAt: Date;
-  lastLogin: Date;
+  password: string;
 }
 
 interface AuthState {
@@ -49,13 +49,17 @@ export const useAuthStore = create<AuthState>((set) => {
         }
 
         // Create new user document
-        const newUser = {
-          username,
-          password, // In a production app, this should be hashed
-          ...userData,
+        const newUser: User = {
+          id: '',
           role: 'user',
           createdAt: serverTimestamp(),
-          lastLogin: serverTimestamp()
+          lastLogin: serverTimestamp(),
+          username,
+          course: '',
+          gender: '',
+          major: '',
+          semester: 0,
+          password: ''
         };
 
         const docRef = doc(collection(db, 'users'));

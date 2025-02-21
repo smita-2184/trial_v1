@@ -8,6 +8,17 @@ interface Message {
   isStreaming?: boolean;
 }
 
+interface Window {
+  SpeechRecognition: any;
+  webkitSpeechRecognition: any;
+}
+
+declare global {
+  interface SpeechRecognitionEvent {
+    results: SpeechRecognitionResultList;
+  }
+}
+
 export function RealtimeChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -94,9 +105,10 @@ export function RealtimeChat() {
       recognitionRef.current = recognition;
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
-        const transcript = Array.from(event.results)
-          .map(result => result[0])
-          .map(result => result.transcript)
+        const result = event.results[event.results.length - 1];
+        const transcript = Array.from(result)
+          .map(r => r[0])
+          .map(r => r.transcript)
           .join('');
         
         setInput(transcript);

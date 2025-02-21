@@ -1,12 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { useOpenAIStore } from '../store/openai';
-import { ChevronLeft, ChevronRight, Calculator, Beaker, Atom, Microscope, Play, RefreshCw, Sparkles } from 'lucide-react';
+import { Calculator, Play, RefreshCw, Sparkles } from 'lucide-react';
 import { InlineMath, BlockMath } from 'react-katex';
-import * as math from 'mathjs';
 import { Mafs, Coordinates, Plot, Theme, Line, Point } from 'mafs';
 import 'mafs/core.css';
-import { useResizable } from '../hooks/useResizable';
-import { useEffect } from 'react';
 
 declare global {
   interface Window {

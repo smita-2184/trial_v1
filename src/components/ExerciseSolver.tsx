@@ -10,13 +10,8 @@ const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
 interface ExamSubmission {
   question: string;
   studentAnswer: string;
-  answerFile: File | null;
-  feedback?: {
-    score: number;
-    comments: string[];
-    corrections: string[];
-    suggestions: string[];
-  };
+  answerFile: File | undefined;
+  feedback: any;
 }
 
 type Mode = 'exercise' | 'exam';
@@ -31,6 +26,14 @@ interface Solution {
   finalAnswer: string;
   relatedConcepts: string[];
   difficulty: 'Easy' | 'Medium' | 'Hard';
+  practiceProblems?: Array<{
+    question: string;
+    answer: string;
+  }>;
+  furtherReading?: Array<{
+    title: string;
+    url: string;
+  }>;
 }
 
 interface ExerciseSolverProps {
@@ -643,7 +646,7 @@ Difficulty: ${solution.difficulty}`;
                           </span>
                         </div>
                         <p className="text-gray-300 mb-2">{problem.question}</p>
-                        <div className="text-gray-400 text-sm">{problem.solution}</div>
+                        <div className="text-gray-400 text-sm">{problem.answer}</div>
                       </div>
                     ))}
                   </div>
@@ -657,13 +660,8 @@ Difficulty: ${solution.difficulty}`;
                   <div className="space-y-4">
                     {solution.furtherReading.map((reading, index) => (
                       <div key={index} className="space-y-1">
-                        <h5 className="font-medium text-blue-400">{reading.topic}</h5>
-                        <p className="text-gray-300 text-sm">{reading.description}</p>
-                        <ul className="list-disc list-inside text-gray-400 text-sm">
-                          {reading.resources.map((resource, i) => (
-                            <li key={i}>{resource}</li>
-                          ))}
-                        </ul>
+                        <h5 className="font-medium text-blue-400">{reading.title}</h5>
+                        <p className="text-gray-300 text-sm">{reading.url}</p>
                       </div>
                     ))}
                   </div>
