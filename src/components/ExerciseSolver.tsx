@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useOpenAIStore } from '../store/openai';
-import { Upload, SendHorizontal, RefreshCw, Calculator, ChevronRight, Download, X, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Upload, SendHorizontal, RefreshCw, ChevronRight, Download, X, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import { BlockMath } from 'react-katex';
 import { useDropzone } from 'react-dropzone';
 
@@ -10,7 +10,7 @@ const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
 interface ExamSubmission {
   question: string;
   studentAnswer: string;
-  answerFile?: File;
+  answerFile: File | null;
   feedback?: {
     score: number;
     comments: string[];
@@ -44,7 +44,6 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
   const [examSubmissions, setExamSubmissions] = useState<ExamSubmission[]>([]);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [loading, setLoading] = useState(false);
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [answerFile, setAnswerFile] = useState<File | null>(null);
   const [expandedSteps, setExpandedSteps] = useState<{ solutionIndex: number; stepIndex: number }[]>([]);
   const service = useOpenAIStore((state) => state.service);
