@@ -534,5 +534,16 @@ export function DeepSeekChat() {
 interface CodeProps {
   inline?: boolean;
   className?: string;
-  children: string;
+  children: string | string[];
 }
+
+const Code: React.FC<CodeProps> = ({ inline, className, children }) => {
+  const match = /language-(\w+)/.exec(className || '');
+  return !inline && match ? (
+    <pre className={className}>
+      <code className={className}>{children}</code>
+    </pre>
+  ) : (
+    <code className={className}>{children}</code>
+  );
+};

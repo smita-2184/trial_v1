@@ -46,7 +46,6 @@ function App() {
   const [isProcessing, setIsProcessing] = React.useState(false);
   const { initializeService } = useOpenAIStore();
   const { user, loading } = useAuthStore();
-  const [rightPanelWidth, setRightPanelWidth] = useState(400);
 
   React.useEffect(() => {
     initializeService().then(() => {
@@ -88,22 +87,8 @@ function App() {
     },
   });
 
-  React.useEffect(() => {
-    const handleResize = () => {
-      const maxLeftWidth = window.innerWidth - 500;
-      if (leftPanelWidth > maxLeftWidth) {
-        setLeftPanelWidth(showLeftPanel ? maxLeftWidth : 0);
-      }
-      setRightPanelWidth(window.innerWidth - (showLeftPanel ? leftPanelWidth : 0) - 32);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [leftPanelWidth, showLeftPanel]);
-
   const toggleLeftPanel = () => {
     setShowLeftPanel(prev => !prev);
-    setRightPanelWidth(window.innerWidth - (showLeftPanel ? 0 : leftPanelWidth) - 32);
   };
 
   if (loading) {
