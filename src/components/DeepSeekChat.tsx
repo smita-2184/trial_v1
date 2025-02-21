@@ -526,3 +526,8 @@ export function DeepSeekChat() {
     </div>
   );
 }
+
+interface CodeProps {
+  inline?: boolean;
+  children: React.ReactNode;
+}

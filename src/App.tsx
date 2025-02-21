@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./components/ui/tabs";
 import { Footer } from './components/Footer';
 import { FileUpload } from "./components/FileUpload";
@@ -46,6 +46,8 @@ function App() {
   const [isProcessing, setIsProcessing] = React.useState(false);
   const { initializeService } = useOpenAIStore();
   const { user, loading } = useAuthStore();
+  const [rightPanelWidth, setRightPanelWidth] = useState(400);
+
   React.useEffect(() => {
     initializeService().then(() => {
       setIsServiceInitialized(true);
@@ -103,6 +105,20 @@ function App() {
   const toggleLeftPanel = () => {
     setShowLeftPanel(prev => !prev);
     setRightPanelWidth(window.innerWidth - (showLeftPanel ? 0 : leftPanelWidth) - 32);
+  };
+
+  const handleResizeRight = (e: MouseEvent) => {
+    if (!isResizingRight) return;
+    
+    const newWidth = window.innerWidth - e.clientX;
+    if (newWidth > 200 && newWidth < window.innerWidth - 200) {
+      setRightPanelWidth(newWidth);
+    }
+  };
+
+  const rightPanelStyle = {
+    width: `${rightPanelWidth}px`,
+    // ... other styles
   };
 
   if (loading) {
