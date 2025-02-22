@@ -400,11 +400,10 @@ export function DeepSeekChat() {
         messages: [...prev.messages, streamingMessage]
       }));
 
-      await sendMessage(messages, (content, thoughts) => {
+      await sendMessage(messages, async (content, thoughts) => {
         if (!service) {
           throw new Error('OpenAI service not initialized');
         }
-      }, service);
         streamingMessage = {
           role: 'assistant',
           content,
@@ -415,7 +414,7 @@ export function DeepSeekChat() {
           ...prev,
           messages: [...prev.messages.slice(0, -1), streamingMessage]
         }));
-      });
+      }, service);
     } catch (error) {
       console.error('Failed to send message:', error);
       setState(prev => ({
