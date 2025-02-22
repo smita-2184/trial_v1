@@ -38,6 +38,7 @@ function App() {
   const [physicsSubTab, setPhysicsSubTab] = React.useState('mechanics');
   const [chemistrySubTab, setChemistrySubTab] = React.useState('model');
   const [isServiceInitialized, setIsServiceInitialized] = React.useState(false);
+  const [rightPanelWidth, setRightPanelWidth] = React.useState(window.innerWidth - 350);
 
   const [showLeftPanel, setShowLeftPanel] = React.useState(true);
   const [leftPanelWidth, setLeftPanelWidth] = React.useState(350);

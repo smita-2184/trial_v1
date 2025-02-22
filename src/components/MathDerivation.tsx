@@ -98,14 +98,14 @@ export function MathDerivation() {
 
   useEffect(() => {
     if (steps[currentStep]?.visualization?.transformType) {
-      const { before, after } = steps[currentStep].visualization.data;
+      const { before = {}, after = {} } = steps[currentStep].visualization.data;
       const progress = (Math.sin(animationTime) + 1) / 2; // Oscillate between 0 and 1
       
       switch (steps[currentStep].visualization.transformType) {
         case 'translation':
           setCurrentTransform({
-            x: before.x + (after.x - before.x) * progress,
-            y: before.y + (after.y - before.y) * progress,
+            x: (before.x ?? 0) + ((after.x ?? 0) - (before.x ?? 0)) * progress,
+            y: (before.y ?? 0) + ((after.y ?? 0) - (before.y ?? 0)) * progress,
             angle: 0,
             scale: 1
           });
@@ -114,7 +114,7 @@ export function MathDerivation() {
           setCurrentTransform({
             x: 0,
             y: 0,
-            angle: before.angle + (after.angle - before.angle) * progress,
+            angle: (before.angle ?? 0) + ((after.angle ?? 0) - (before.angle ?? 0)) * progress,
             scale: 1
           });
           break;
@@ -123,7 +123,7 @@ export function MathDerivation() {
             x: 0,
             y: 0,
             angle: 0,
-            scale: before.scale + (after.scale - before.scale) * progress
+            scale: (before.scale ?? 1) + ((after.scale ?? 1) - (before.scale ?? 1)) * progress
           });
           break;
       }
