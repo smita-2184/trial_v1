@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./components/ui/tabs";
-import { Footer } from './components/Footer';
+import { Copyright } from "./components/ui/Copyright";
 import { FileUpload } from "./components/FileUpload";
 import { BookOpen, Brain, MessageSquare, Calculator, Library, FileText, LineChart, Activity, Code, Upload, X, Beaker, Settings, GraduationCap, PresentationIcon } from "lucide-react";
 import { Chat } from './components/Chat';
@@ -41,6 +41,7 @@ function App() {
 
   const [showLeftPanel, setShowLeftPanel] = React.useState(true);
   const [leftPanelWidth, setLeftPanelWidth] = React.useState(350);
+  const [rightPanelWidth, setRightPanelWidth] = React.useState(window.innerWidth - 350 - 32);
   const [pdfText, setPdfText] = React.useState<string>('');
   const leftResizeRef = React.useRef<HTMLDivElement>(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
@@ -87,15 +88,27 @@ function App() {
     },
   });
 
+  React.useEffect(() => {
+    const handleResize = () => {
+      const maxLeftWidth = window.innerWidth - 500;
+      if (leftPanelWidth > maxLeftWidth) {
+        setLeftPanelWidth(showLeftPanel ? maxLeftWidth : 0);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [leftPanelWidth, showLeftPanel]);
+
   const toggleLeftPanel = () => {
     setShowLeftPanel(prev => !prev);
+    setRightPanelWidth(window.innerWidth - (showLeftPanel ? 0 : leftPanelWidth) - 32);
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-        <Footer />
+      <div className="min-h-screen bg-[#1C1C1E] flex items-center justify-center">
+        <div className="text-white text-lg">Loading...</div>
       </div>
     );
   }
@@ -105,7 +118,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-800 pb-16">
+    <div className="min-h-screen h-screen flex flex-col bg-[#1C1C1E] text-white">
       {/* Header */}
       <div className="flex-none bg-[#2C2C2E] border-b border-[#3A3A3C]">
         <div className="px-6 py-4">
@@ -211,7 +224,7 @@ function App() {
               </Tabs>
             )}
             {currentTab === 'math-lab' && (
-              <Tabs value={mathSubTab} onValueChange={setMathSubTab} className="flex-1">
+              <Tabs value={mathSubTab} onValueChange={setMathSubTab}>
                 <TabsList className="w-full flex overflow-x-auto">
                   {[
                 { value: 'visualization', label: 'Visualization', icon: LineChart },
@@ -260,10 +273,9 @@ function App() {
                 </TabsList>
               </Tabs>
             )}
-    </div>
-    <div className="flex gap-4 p-4 relative">
-            {/* Toggle Button and Left Panel */}
-            <>
+          </div>
+          <div className="flex gap-4 p-4 relative">
+            {/* Toggle Button */}
             {!showLeftPanel && (
               <button
                 onClick={toggleLeftPanel}
@@ -334,10 +346,9 @@ function App() {
                 </div>
               </div>
             )}
-            </>
 
-              {/* Right Panel - Content Based on Selected Tab */}
-              <div
+            {/* Right Panel - Content Based on Selected Tab */}
+            <div
               className={`bg-[#2C2C2E] rounded-lg transition-all duration-300 ${
                 showLeftPanel ? 'ml-[380px]' : ''
               }`}
@@ -445,7 +456,7 @@ function App() {
           </div>
         </div>
       </Tabs>
-      <Footer />
+      <Copyright />
     </div>
   );
 }

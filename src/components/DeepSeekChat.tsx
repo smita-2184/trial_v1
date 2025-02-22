@@ -5,8 +5,6 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { Volume2, VolumeX } from 'lucide-react';
-import remarkGfm from 'remark-gfm';
-import rehypePrism from 'rehype-prism-plus';
 
 interface Particle {
   x: number;
@@ -251,39 +249,41 @@ interface ChatMessageProps {
 const API_KEY = 'sk-84bedb070f484479be0d09dca0bf142b';
 const API_URL = 'https://api.deepseek.com/v1/chat/completions';
 
+interface CodeProps {
+  inline?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}
+
+interface MarkdownComponentProps {
+  children: React.ReactNode;
+}
+
 function ChatMessage({ message, isStreaming }: ChatMessageProps) {
   const [showThoughts, setShowThoughts] = useState(false);
 
   return (
     <div
-      className={`p-4 rounded-lg ${
-        message.role === 'user' 
-          ? 'bg-[#2C2C2E] ml-12' 
-          : 'bg-[#3A3A3C] mr-12'
-      }`}
+      className={`p-4 rounded-lg ${message.role === 'user' ? 'bg-[#2C2C2E] ml-12' : 'bg-[#3A3A3C] mr-12'}`}
     >
       <div className="prose prose-invert max-w-none">
         <ReactMarkdown
-          remarkPlugins={[remarkMath, remarkGfm]}
-          rehypePlugins={[rehypeKatex, rehypePrism]}
+          remarkPlugins={[remarkMath]}
+          rehypePlugins={[rehypeKatex]}
           components={{
-            h1: ({ children }) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
-            h2: ({ children }) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
-            h3: ({ children }) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
-            code: ({ inline, className, children }: CodeProps) => {
-              const match = /language-(\w+)/.exec(className || '');
-              return !inline && match ? (
-                <pre className={className}>
-                  <code className={className}>{children}</code>
-                </pre>
+            h1: ({ children }: MarkdownComponentProps) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
+            h2: ({ children }: MarkdownComponentProps) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
+            h3: ({ children }: MarkdownComponentProps) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
+            code: ({ inline, children, className }: CodeProps) => 
+              inline ? (
+                <code className="bg-[#2C2C2E] px-1 rounded">{String(children)}</code>
               ) : (
-                <code className={className}>{children}</code>
-              );
-            },
-            blockquote: ({ children }) => (
-              <blockquote className="border-l-4 border-blue-500 pl-4 italic">
-                {children}
-              </blockquote>
+                <pre className="bg-[#2C2C2E] p-4 rounded-lg overflow-x-auto">
+                  <code>{String(children)}</code>
+                </pre>
+              ),
+            blockquote: ({ children }: MarkdownComponentProps) => (
+              <blockquote className="border-l-4 border-blue-500 pl-4 italic">{children}</blockquote>
             ),
           }}
         >
@@ -492,8 +492,8 @@ export function DeepSeekChat() {
             </div>
           </div>
         )}
-        {!state.isLoading && state.messages.length > 0 && (
-          audioFadeRef.current?.()
+        {!state.isLoading && state.messages.length > 0 && audioFadeRef.current && (
+          <>{audioFadeRef.current()}</>
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -530,20 +530,3 @@ export function DeepSeekChat() {
     </div>
   );
 }
-
-interface CodeProps {
-  inline?: boolean;
-  className?: string;
-  children: string | string[];
-}
-
-const Code: React.FC<CodeProps> = ({ inline, className, children }) => {
-  const match = /language-(\w+)/.exec(className || '');
-  return !inline && match ? (
-    <pre className={className}>
-      <code className={className}>{children}</code>
-    </pre>
-  ) : (
-    <code className={className}>{children}</code>
-  );
-};

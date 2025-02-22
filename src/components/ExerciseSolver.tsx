@@ -3,6 +3,7 @@ import { useOpenAIStore } from '../store/openai';
 import { Upload, SendHorizontal, RefreshCw, ChevronRight, Download, X, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import { BlockMath } from 'react-katex';
 import { useDropzone } from 'react-dropzone';
+import 'katex/dist/katex.min.css';
 
 const DEEPSEEK_API_KEY = 'sk-84bedb070f484479be0d09dca0bf142b';
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
@@ -10,22 +11,25 @@ const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
 interface ExamSubmission {
   question: string;
   studentAnswer: string;
-  answerFile: File | undefined;
-  feedback: any;
+  answerFile?: File;
+  feedback?: {
+    score: number;
+    comments: string[];
+    corrections: string[];
+    suggestions: string[];
+    conceptualUnderstanding?: {
+      strengths: string[];
+      weaknesses: string[];
+    };
+    learningResources?: {
+      topic: string;
+      description: string;
+      type: 'video' | 'article' | 'exercise';
+    }[];
+  };
 }
 
 type Mode = 'exercise' | 'exam';
-
-interface PracticeProblem {
-  question: string;
-  answer: string;
-  difficulty: 'Easy' | 'Medium' | 'Hard';
-}
-
-interface FeedbackComment {
-  text: string;
-  type: string;
-}
 
 interface Solution {
   question: string;
@@ -33,19 +37,36 @@ interface Solution {
     explanation: string;
     latex?: string;
     hint?: string;
+    visualization?: {
+      type: 'graph' | 'diagram' | 'plot';
+      data: {
+        points?: [number, number][];
+        functions?: string[];
+        labels?: string[];
+      };
+    };
   }[];
   finalAnswer: string;
   relatedConcepts: string[];
   difficulty: 'Easy' | 'Medium' | 'Hard';
-  practiceProblems?: PracticeProblem[];
-  furtherReading?: Array<{
-    title: string;
-    url: string;
-  }>;
+  practiceProblems: {
+    question: string;
+    solution: string;
+    difficulty: 'Easy' | 'Medium' | 'Hard';
+  }[];
+  furtherReading: {
+    topic: string;
+    description: string;
+    resources: string[];
+  }[];
 }
 
 interface ExerciseSolverProps {
   documentText: string;
+}
+
+interface BlockMathProps {
+  math: string;
 }
 
 export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
@@ -56,6 +77,7 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [loading, setLoading] = useState(false);
   const [answerFile, setAnswerFile] = useState<File | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [expandedSteps, setExpandedSteps] = useState<{ solutionIndex: number; stepIndex: number }[]>([]);
   const service = useOpenAIStore((state) => state.service);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -114,12 +136,31 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
     }
   }, [documentText, service]);
 
+  const onDrop = (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setUploadedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const onAnswerFileDrop = (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     if (file) {
       setAnswerFile(file);
     }
   };
+
+  const { getRootProps, getInputProps } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.png', '.jpg', '.jpeg']
+    },
+    maxFiles: 1
+  });
 
   const { getRootProps: getAnswerRootProps, getInputProps: getAnswerInputProps } = useDropzone({
     onDrop: onAnswerFileDrop,
@@ -137,14 +178,10 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
     try {
       let answerText = currentAnswer;
       
-      // If there's an answer file, we need to extract its text first
       if (answerFile) {
-        // Here you would extract text from the file
-        // For now, we'll just use the filename
         answerText = `[Answer from file: ${answerFile.name}] ${currentAnswer}`;
       }
       
-      // Use DeepSeek API for enhanced answer analysis
       const response = await fetch(DEEPSEEK_API_URL, {
         method: 'POST',
         headers: {
@@ -201,17 +238,17 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
       const data = await response.json();
       const feedback = JSON.parse(data.choices[0].message.content);
 
-      setExamSubmissions((prev: ExamSubmission[]) => [...prev, {
+      setExamSubmissions(prev => [...prev, {
         question,
         studentAnswer: answerText,
         answerFile: answerFile || undefined,
         feedback
       }]);
 
-      // Reset form
       setQuestion('');
       setCurrentAnswer('');
       setAnswerFile(null);
+
     } catch (error) {
       console.error('Failed to analyze answer:', error);
     } finally {
@@ -297,7 +334,9 @@ Guidelines:
         }],
         finalAnswer: "Error occurred",
         relatedConcepts: [],
-        difficulty: "Medium"
+        difficulty: "Medium",
+        practiceProblems: [],
+        furtherReading: []
       }, ...prev]);
     } finally {
       setLoading(false);
@@ -562,7 +601,7 @@ Difficulty: ${solution.difficulty}`;
                           <p className="text-gray-300">{step.explanation}</p>
                           {step.latex && (
                             <div className="mt-2">
-                              <BlockMath math={step.latex} />
+                              <BlockMathProps math={step.latex} />
                             </div>
                           )}
                         </div>
@@ -633,7 +672,7 @@ Difficulty: ${solution.difficulty}`;
                           </span>
                         </div>
                         <p className="text-gray-300 mb-2">{problem.question}</p>
-                        <div className="text-gray-400 text-sm">{problem.answer}</div>
+                        <div className="text-gray-400 text-sm">{problem.solution}</div>
                       </div>
                     ))}
                   </div>
@@ -647,8 +686,13 @@ Difficulty: ${solution.difficulty}`;
                   <div className="space-y-4">
                     {solution.furtherReading.map((reading, index) => (
                       <div key={index} className="space-y-1">
-                        <h5 className="font-medium text-blue-400">{reading.title}</h5>
-                        <p className="text-gray-300 text-sm">{reading.url}</p>
+                        <h5 className="font-medium text-blue-400">{reading.topic}</h5>
+                        <p className="text-gray-300 text-sm">{reading.description}</p>
+                        <ul className="list-disc list-inside text-gray-400 text-sm">
+                          {reading.resources.map((resource, i) => (
+                            <li key={i}>{resource}</li>
+                          ))}
+                        </ul>
                       </div>
                     ))}
                   </div>
@@ -692,12 +736,12 @@ Difficulty: ${solution.difficulty}`;
 
                   {/* Comments */}
                   <div className="space-y-4">
-                    {submission.feedback.comments.map((comment: FeedbackComment, i: number) => (
+                    {submission.feedback.comments.map((comment, i) => (
                       <div key={i} className="flex items-start gap-2">
                         <div className="p-1 rounded-full bg-blue-500/20">
                           <FileText className="w-4 h-4 text-blue-400" />
                         </div>
-                        <p className="text-gray-300">{comment.text}</p>
+                        <p className="text-gray-300">{comment}</p>
                       </div>
                     ))}
                   </div>
@@ -707,7 +751,7 @@ Difficulty: ${solution.difficulty}`;
                     <div className="mt-4">
                       <h4 className="font-medium mb-2">Corrections</h4>
                       <ul className="space-y-2">
-                        {submission.feedback.corrections.map((correction: string, i: number) => (
+                        {submission.feedback.corrections.map((correction, i) => (
                           <li key={i} className="flex items-start gap-2">
                             <div className="p-1 rounded-full bg-red-500/20">
                               <AlertCircle className="w-4 h-4 text-red-400" />
@@ -724,7 +768,7 @@ Difficulty: ${solution.difficulty}`;
                     <div className="mt-4">
                       <h4 className="font-medium mb-2">Suggestions</h4>
                       <ul className="space-y-2">
-                        {submission.feedback.suggestions.map((suggestion: string, i: number) => (
+                        {submission.feedback.suggestions.map((suggestion, i) => (
                           <li key={i} className="flex items-start gap-2">
                             <div className="p-1 rounded-full bg-green-500/20">
                               <CheckCircle2 className="w-4 h-4 text-green-400" />

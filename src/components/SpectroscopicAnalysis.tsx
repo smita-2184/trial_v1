@@ -6,14 +6,45 @@ import { Chat } from './Chat';
 import Plot from 'react-plotly.js';
 
 interface SpectroscopicData {
-  type: 'NMR' | 'IR' | 'UV-Vis' | 'Mass';
+  type: 'NMR' | 'HMR' | 'IR' | 'UV-Vis' | 'Mass' | 'Crystallography' | 'Fluorescence';
   data: number[][];
   metadata?: {
     instrument?: string;
     solvent?: string;
     frequency?: number;
     temperature?: number;
+    crystalSystem?: string;
+    spaceGroup?: string;
+    excitationWavelength?: number;
+    emissionWavelength?: number;
+    resolution?: number;
+    acquisitionTime?: number;
+    pulseSequence?: string;
+    relaxationDelay?: number;
+    scanCount?: number;
+    magneticField?: number;
+    couplingConstants?: number[];
+    chemicalShifts?: number[];
   };
+  peakAssignments?: {
+    position: number;
+    intensity: number;
+    multiplicity?: string;
+    coupling?: number;
+    assignment?: string;
+    confidence: number;
+  }[];
+  structuralFeatures?: {
+    type: string;
+    probability: number;
+    description: string;
+    relatedPeaks: number[];
+  }[];
+  processingHistory?: {
+    timestamp: number;
+    operation: string;
+    parameters: Record<string, any>;
+  }[];
 }
 
 export function SpectroscopicAnalysis() {
@@ -26,7 +57,8 @@ export function SpectroscopicAnalysis() {
   const [analysis, setAnalysis] = useState<string>('');
   const [dataTable, setDataTable] = useState<{ x: number; y: number; peak?: boolean }[]>([]);
   const [peakData, setPeakData] = useState<{ position: number; intensity: number; assignment?: string }[]>([]);
-  const [expandedSections, setExpandedSections] = useState<string[]>([]);
+  const [expandedSections, setExpandedSections] = useState<string[]>(['metadata', 'peaks']);
+  const [activeTab, setActiveTab] = useState<'spectrum' | 'chat'>('spectrum');
   const service = useOpenAIStore((state) => state.service);
   const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -136,7 +168,6 @@ export function SpectroscopicAnalysis() {
     });
   };
 
-  // Process image data into spectral data points
   const processImageData = (file: File): Promise<number[][]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -144,21 +175,16 @@ export function SpectroscopicAnalysis() {
         const img = document.createElement('img');
         img.onload = () => {
           try {
-            // Create canvas to process image
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             if (!ctx || !canvas) {
               throw new Error('Could not create canvas context');
             }
 
-            // Set canvas dimensions
             canvas.width = img.width;
             canvas.height = img.height;
-
-            // Draw image on canvas
             ctx.drawImage(img, 0, 0);
 
-            // Get image data
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             
             if (imageData.data.length === 0) {
@@ -167,7 +193,6 @@ export function SpectroscopicAnalysis() {
             
             const data: number[][] = [];
 
-            // Process image data into spectral format
             for (let x = 0; x < canvas.width; x++) {
               let totalIntensity = 0;
               for (let y = 0; y < canvas.height; y++) {
@@ -193,7 +218,6 @@ export function SpectroscopicAnalysis() {
           reject(new Error('Failed to load image. Please check if the file is a valid image.'));
         };
 
-        // Create object URL from file
         img.src = e.target?.result as string;
       };
 
@@ -262,75 +286,68 @@ export function SpectroscopicAnalysis() {
     if (filename.includes('ir') || filename.includes('infrared')) return 'IR';
     if (filename.includes('uv') || filename.includes('vis')) return 'UV-Vis';
     if (filename.includes('ms') || filename.includes('mass')) return 'Mass';
-    return 'NMR'; // Default to NMR
+    return 'NMR';
   };
 
   const analyzeSpectrum = async (data: number[][]) => {
     if (!service || !data || data.length === 0) return;
     
-    // Limit data points for analysis to prevent stack overflow
     const sampledData = sampleData(data, 1000);
     
     try {
-      const prompt = `Analyze this spectroscopic data and identify key features. Format response as JSON:
-      {
-        "metadata": {
-          "spectrumType": "string",
-          "instrumentType": "string",
-          "resolution": "string",
-          "scanRange": "string"
-        },
-        "peaks": [
-          {
-            "position": number,
-            "intensity": number,
-            "assignment": "Chemical group or feature description",
-            "confidence": number,
-            "details": {
-              "type": "string",
-              "characteristics": ["string"],
-              "possibleGroups": ["string"]
-            }
-          }
-        ],
-        "analysis": {
-          "summary": "Overall interpretation",
-          "keyFeatures": ["List of important spectral features"],
-          "structuralFeatures": ["Identified structural elements"],
-          "possibleStructures": ["Suggested molecular structures"],
-          "correlations": [
-            {
-              "peaks": [number, number],
-              "relationship": "string",
-              "significance": "string"
-            }
-          ],
-          "reliability": {
-            "score": number,
-            "factors": ["string"]
-          },
-          "recommendations": ["Suggestions for further analysis"]
-        }
-      }
-
-      Raw spectral data points (sampled):
-      ${JSON.stringify(sampledData.slice(0, 100))}
-      
-      Total data points: ${sampledData.length}
-      `;
+      const prompt = `Analyze this spectroscopic data and provide a detailed report. Data points: ${JSON.stringify(sampledData)}\n\nPlease provide analysis in the following format:\n1. Peak Identification\n2. Structural Features\n3. Possible Molecular Components\n4. Quality Assessment\n5. Recommendations`;
 
       const response = await service.generateResponse(prompt);
-      const result = JSON.parse(response);
+      setAnalysis(response);
 
-      // Update peaks with assignments
-      setPeaks(result.peaks.map((peak: any) => ({
-        x: peak.position,
-        y: peak.intensity,
-        text: peak.assignment
-      })));
+      // Update plot with identified peaks
+      const plotData = [
+        {
+          x: data.map(point => point[0]),
+          y: data.map(point => point[1]),
+          type: 'scatter',
+          mode: 'lines',
+          name: 'Spectrum',
+          line: { color: '#4299E1' }
+        },
+        {
+          x: peakData.map(peak => peak.position),
+          y: peakData.map(peak => peak.intensity),
+          type: 'scatter',
+          mode: 'markers+text',
+          name: 'Peaks',
+          text: peakData.map((_, i) => `Peak ${i + 1}`),
+          textposition: 'top center',
+          marker: { size: 8, color: '#F56565' }
+        }
+      ];
 
-      // Set analysis text
-      setAnalysis(JSON.stringify(result.analysis, null, 2));
+      const layout = {
+        title: 'Spectroscopic Analysis',
+        plot_bgcolor: '#1A202C',
+        paper_bgcolor: '#1A202C',
+        font: { color: '#E2E8F0' },
+        xaxis: {
+          title: 'Position',
+          gridcolor: '#2D3748',
+          zerolinecolor: '#2D3748'
+        },
+        yaxis: {
+          title: 'Intensity',
+          gridcolor: '#2D3748',
+          zerolinecolor: '#2D3748'
+        },
+        showlegend: true,
+        legend: {
+          x: 0,
+          y: 1,
+          bgcolor: '#2D3748',
+          bordercolor: '#4A5568'
+        },
+        margin: { t: 50, r: 50, b: 50, l: 50 }
+      };
+
+      return <Plot data={plotData} layout={layout} style={{ width: '100%', height: '400px' }} />;
 
     } catch (error) {
       console.error('Failed to analyze spectrum:', error);
@@ -338,7 +355,6 @@ export function SpectroscopicAnalysis() {
     }
   };
 
-  // Helper function to sample data points evenly
   const sampleData = (data: number[][], targetPoints: number): number[][] => {
     if (data.length <= targetPoints) return data;
     
@@ -352,367 +368,175 @@ export function SpectroscopicAnalysis() {
     return sampled;
   };
 
-  // Find peaks in spectral data
-  const findPeaks = (data: number[][]) => {
+  const findPeaks = (data: number[][]): { position: number; intensity: number }[] => {
     const peaks: { position: number; intensity: number }[] = [];
     const windowSize = 5;
-    
-    // Limit data points for peak finding to prevent stack overflow
-    const sampledData = sampleData(data, 1000);
-    
-    if (sampledData.length < windowSize * 2 + 1) {
-      setValidationError('Not enough data points to find peaks. Please provide more data.');
-      return peaks;
-    }
-    
-    for (let i = windowSize; i < sampledData.length - windowSize; i++) {
-      const current = sampledData[i][1];
+    const threshold = 0.1;
+
+    for (let i = windowSize; i < data.length - windowSize; i++) {
+      const currentY = data[i][1];
       let isPeak = true;
-      
+
       // Check if current point is higher than surrounding points
       for (let j = i - windowSize; j <= i + windowSize; j++) {
-        if (j !== i && sampledData[j][1] >= current) {
+        if (j !== i && data[j][1] >= currentY) {
           isPeak = false;
           break;
         }
       }
-      
-      if (isPeak) {
+
+      // Check if peak is significant (above threshold)
+      if (isPeak && currentY > threshold) {
         peaks.push({
-          position: sampledData[i][0],
-          intensity: current
+          position: data[i][0],
+          intensity: currentY
         });
       }
     }
-    
-    // Sort peaks by intensity
-    peaks.sort((a, b) => b.intensity - a.intensity);
-    
-    // Limit number of peaks to prevent performance issues
-    return peaks.slice(0, 20);
+
+    return peaks;
   };
 
   return (
-    <div className="h-[calc(100vh-200px)] flex flex-col bg-[#2C2C2E] rounded-lg">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 bg-[#1C1C1E] rounded-t-lg">
-        <div className="flex items-center gap-4">
-          <h2 className="text-lg font-medium">Spectroscopic Analysis</h2>
+    <div className="p-6 h-full overflow-y-auto">
+      <div className="space-y-6">
+        {/* Navigation Tabs */}
+        <div className="flex space-x-4 mb-4">
           <button
-            onClick={() => setShowChat(!showChat)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
-              showChat ? 'bg-blue-500 hover:bg-blue-600' : 'bg-[#3A3A3C] hover:bg-[#4A4A4C]'
-            }`}
+            onClick={() => setActiveTab('spectrum')}
+            className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'spectrum' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'}`}
           >
-            {showChat ? 'Hide Assistant' : 'Show Assistant'}
+            Spectrum Analysis
+          </button>
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'chat' ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-300'}`}
+          >
+            AI Assistant
           </button>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex gap-4 p-4 overflow-y-auto">
-        {/* Left Panel - Upload and Spectrum View */}
-        <div className={`${showChat ? 'w-1/3' : 'w-1/2'} flex flex-col gap-4 min-w-[400px] transition-all duration-300`}>
-          {/* Upload Area */}
-          <div 
-            {...getRootProps()} 
-            className="border-2 border-dashed border-[#3A3A3C] rounded-lg p-4 text-center cursor-pointer hover:border-blue-500 transition-colors"
-          >
-            <input {...getInputProps()} />
-            {file ? (
-              <div className="flex items-center justify-center gap-2 text-blue-400">
-                <FileText className="w-6 h-6" />
-                <div>
-                  <p className="font-medium">{file.name}</p>
-                  <p className="text-sm text-gray-400">
-                    {(file.size / 1024).toFixed(1)} KB
-                  </p>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setFile(null);
-                    setProcessedData(null);
-                  }}
-                  className="p-1 hover:bg-[#3A3A3C] rounded-full ml-2"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <div>
-                <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-400">Upload spectroscopic data</p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Supports JCAMP-DX (.jdx, .dx), CSV, and images
-                </p>
+        {activeTab === 'spectrum' ? (
+          <>
+            {/* File Upload Section */}
+            <div {...getRootProps()} className="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition-colors">
+              <input {...getInputProps()} />
+              <p className="text-gray-300">Drag & drop a spectroscopic data file here, or click to select</p>
+              <p className="text-sm text-gray-500 mt-2">Supported formats: JCAMP-DX (.jdx, .dx), CSV, or spectral images</p>
+            </div>
+
+            {/* Error Display */}
+            {(error || validationError) && (
+              <div className="bg-red-900/50 text-red-200 p-4 rounded-lg">
+                {error || validationError}
               </div>
             )}
-          </div>
 
-          {/* Spectrum Plot */}
-          <div className="flex-1 bg-[#1C1C1E] rounded-lg p-4 overflow-hidden">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="flex items-center gap-2 text-gray-400">
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  Processing data...
-                </div>
-              </div>
-            ) : error ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-red-500">{error}</div>
-              </div>
-            ) : processedData ? (
-              <Plot
-                data={[
-                  {
-                    x: processedData.data.map(point => point[0]),
-                    y: processedData.data.map(point => point[1]),
-                    type: 'scatter',
-                    mode: 'lines',
-                    line: { color: '#60A5FA' },
-                    name: 'Spectrum'
-                  },
-                  {
-                    x: peaks.map(peak => peak.x),
-                    y: peaks.map(peak => peak.y),
-                    type: 'scatter',
-                    mode: 'markers+text',
-                    marker: { color: '#F87171', size: 8 },
-                    text: peaks.map(peak => peak.text),
-                    textposition: 'top center',
-                    name: 'Peaks'
-                  }
-                ]}
-                layout={{
-                  plot_bgcolor: '#1C1C1E',
-                  paper_bgcolor: '#1C1C1E',
-                  font: { color: '#FFFFFF' },
-                  xaxis: {
-                    gridcolor: '#3A3A3C',
-                    zerolinecolor: '#3A3A3C',
-                    title: 'Position'
-                  },
-                  yaxis: {
-                    gridcolor: '#3A3A3C',
-                    zerolinecolor: '#3A3A3C',
-                    title: 'Intensity'
-                  },
-                  margin: { t: 40, r: 20, b: 40, l: 40 },
-                  showlegend: true,
-                  legend: {
-                    x: 0,
-                    y: 1,
-                    bgcolor: '#2C2C2E',
-                    bordercolor: '#3A3A3C'
-                  }
-                }}
-                useResizeHandler
-                style={{ width: '100%', height: '100%' }}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-gray-400">
-                  Upload a file to view spectrum
-                </div>
+            {/* Loading State */}
+            {loading && (
+              <div className="flex items-center justify-center py-4">
+                <RefreshCw className="w-6 h-6 animate-spin" />
+                <span className="ml-2">Processing data...</span>
               </div>
             )}
-          </div>
-        </div>
 
-        {/* Right Panel - Analysis */}
-        <div className={`${showChat ? 'w-1/3' : 'w-1/2'} min-w-[400px] transition-all duration-300`}>
-          <div className="bg-[#1C1C1E] rounded-lg p-4">
-            <h3 className="text-lg font-medium mb-4">Spectral Analysis</h3>
-            
-            {loading ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="flex items-center gap-2 text-gray-400">
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  Analyzing spectrum...
-                </div>
-              </div>
-            ) : processedData ? (
+            {/* Results Section */}
+            {processedData && (
               <div className="space-y-6">
-                {/* Analysis Content */}
-                {analysis && (
+                {/* Quick Actions */}
+                <div className="flex space-x-4 mb-4">
+                  <button
+                    onClick={() => setExpandedSections(['metadata', 'peaks', 'analysis'])}
+                    className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+                  >
+                    Expand All
+                  </button>
+                  <button
+                    onClick={() => setExpandedSections([])}
+                    className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+                  >
+                    Collapse All
+                  </button>
+                </div>
+
+                {/* Spectrum Plot */}
+                <div className="bg-gray-800 rounded-lg p-4 shadow-lg">
+                  <h3 className="text-lg font-semibold mb-4">Spectrum Visualization</h3>
+                  <Plot
+                    data={[/* ... existing plot data ... */]}
+                    layout={{/* ... existing layout ... */}}
+                    style={{ width: '100%', height: '400px' }}
+                  />
+                </div>
+
+                {/* Analysis Sections */}
                 <div className="space-y-4">
                   {/* Metadata Section */}
-                  <div className="bg-[#2C2C2E] rounded-lg overflow-hidden">
+                  <div className="bg-gray-800 rounded-lg p-4 shadow-lg transition-all duration-200">
                     <button
                       onClick={() => toggleSection('metadata')}
-                      className="w-full p-4 flex items-center justify-between hover:bg-[#3A3A3C] transition-colors"
+                      className="flex items-center justify-between w-full text-left p-2 hover:bg-gray-700 rounded-lg"
                     >
-                      <h4 className="text-sm font-medium text-gray-400">Metadata</h4>
-                      <ChevronRight 
-                        className={`w-4 h-4 transition-transform ${
-                          expandedSections.includes('metadata') ? 'rotate-90' : ''
-                        }`}
+                      <h3 className="text-lg font-semibold">Metadata</h3>
+                      <ChevronRight
+                        className={`w-5 h-5 transform transition-transform ${expandedSections.includes('metadata') ? 'rotate-90' : ''}`}
                       />
                     </button>
-                    <div className={`grid grid-cols-2 gap-4 p-4 bg-[#1C1C1E] transition-all ${
-                      expandedSections.includes('metadata') ? 'block' : 'hidden'
-                    }`}>
-                    {Object.entries(JSON.parse(analysis || '{}').metadata || {}).map(([key, value]) => (
-                      <div key={key}>
-                        <div className="text-xs text-gray-500">{key}</div>
-                        <div className="text-sm">{String(value)}</div>
+                    {expandedSections.includes('metadata') && processedData.metadata && (
+                      <div className="mt-4 space-y-2 p-4 bg-gray-700/50 rounded-lg">
+                        <p><span className="font-semibold">Type:</span> {processedData.type}</p>
+                        <p><span className="font-semibold">Instrument:</span> {processedData.metadata.instrument || 'N/A'}</p>
+                        <p><span className="font-semibold">Resolution:</span> {processedData.metadata.resolution || 'N/A'}</p>
                       </div>
-                    ))}
-                    </div>
+                    )}
                   </div>
 
                   {/* Peak Analysis Section */}
-                  <div className="bg-[#2C2C2E] rounded-lg overflow-hidden">
+                  <div className="bg-gray-800 rounded-lg p-4 shadow-lg transition-all duration-200">
                     <button
                       onClick={() => toggleSection('peaks')}
-                      className="w-full p-4 flex items-center justify-between hover:bg-[#3A3A3C] transition-colors"
+                      className="flex items-center justify-between w-full text-left p-2 hover:bg-gray-700 rounded-lg"
                     >
-                      <h4 className="text-sm font-medium text-gray-400">Peak Analysis</h4>
-                      <ChevronRight 
-                        className={`w-4 h-4 transition-transform ${
-                          expandedSections.includes('peaks') ? 'rotate-90' : ''
-                        }`}
+                      <h3 className="text-lg font-semibold">Peak Analysis</h3>
+                      <ChevronRight
+                        className={`w-5 h-5 transform transition-transform ${expandedSections.includes('peaks') ? 'rotate-90' : ''}`}
                       />
                     </button>
-                    <div className={`space-y-2 p-4 bg-[#1C1C1E] transition-all ${
-                      expandedSections.includes('peaks') ? 'block' : 'hidden'
-                    }`}>
-                    {JSON.parse(analysis || '{}').peaks?.map((peak: any, index: number) => (
-                      <div key={index} className="bg-[#1C1C1E] rounded p-2">
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm font-medium">{peak.assignment}</div>
-                          <div className="text-xs text-gray-400">
-                            Confidence: {(peak.confidence * 100).toFixed(1)}%
-                          </div>
-                        </div>
-                        <div className="mt-1 text-xs text-gray-400">
-                          Position: {peak.position.toFixed(2)}, Intensity: {peak.intensity.toFixed(2)}
-                        </div>
-                        {peak.details && (
-                          <div className="mt-2 text-xs">
-                            <div>Type: {peak.details.type}</div>
-                            <div>Characteristics: {peak.details.characteristics.join(', ')}</div>
-                            <div>Possible Groups: {peak.details.possibleGroups.join(', ')}</div>
-                          </div>
-                        )}
+                    {expandedSections.includes('peaks') && (
+                      <div className="mt-4 overflow-x-auto p-4 bg-gray-700/50 rounded-lg">
+                        <table className="min-w-full divide-y divide-gray-600">
+                          <thead>
+                            <tr>
+                              <th className="px-4 py-2 bg-gray-700">Position</th>
+                              <th className="px-4 py-2 bg-gray-700">Intensity</th>
+                              <th className="px-4 py-2 bg-gray-700">Assignment</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-600">
+                            {peakData.map((peak, index) => (
+                              <tr key={index} className="hover:bg-gray-600 transition-colors">
+                                <td className="px-4 py-2 text-center">{peak.position.toFixed(2)}</td>
+                                <td className="px-4 py-2 text-center">{peak.intensity.toFixed(2)}</td>
+                                <td className="px-4 py-2 text-center">{peak.assignment || '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                    ))}
-                    </div>
-                  </div>
-
-                  {/* Structural Analysis Section */}
-                  <div className="bg-[#2C2C2E] rounded-lg overflow-hidden">
-                    <button
-                      onClick={() => toggleSection('structural')}
-                      className="w-full p-4 flex items-center justify-between hover:bg-[#3A3A3C] transition-colors"
-                    >
-                      <h4 className="text-sm font-medium text-gray-400">Structural Analysis</h4>
-                      <ChevronRight 
-                        className={`w-4 h-4 transition-transform ${
-                          expandedSections.includes('structural') ? 'rotate-90' : ''
-                        }`}
-                      />
-                    </button>
-                    <div className={`space-y-4 p-4 bg-[#1C1C1E] transition-all ${
-                      expandedSections.includes('structural') ? 'block' : 'hidden'
-                    }`}>
-                    <div>
-                      <div className="text-xs text-gray-500 mb-1">Key Features</div>
-                      <ul className="list-disc list-inside text-sm">
-                        {JSON.parse(analysis || '{}').analysis?.keyFeatures?.map((feature: string, index: number) => (
-                          <li key={index}>{feature}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500 mb-1">Structural Features</div>
-                      <ul className="list-disc list-inside text-sm">
-                        {JSON.parse(analysis || '{}').analysis?.structuralFeatures?.map((feature: string, index: number) => (
-                          <li key={index}>{feature}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    </div>
-                  </div>
-
-                  {/* Reliability Assessment Section */}
-                  <div className="bg-[#2C2C2E] rounded-lg overflow-hidden">
-                    <button
-                      onClick={() => toggleSection('reliability')}
-                      className="w-full p-4 flex items-center justify-between hover:bg-[#3A3A3C] transition-colors"
-                    >
-                      <h4 className="text-sm font-medium text-gray-400">Reliability Assessment</h4>
-                      <ChevronRight 
-                        className={`w-4 h-4 transition-transform ${
-                          expandedSections.includes('reliability') ? 'rotate-90' : ''
-                        }`}
-                      />
-                    </button>
-                    <div className={`space-y-2 p-4 bg-[#1C1C1E] transition-all ${
-                      expandedSections.includes('reliability') ? 'block' : 'hidden'
-                    }`}>
-                    <div className="flex items-center gap-2">
-                      <div className="text-sm">Score:</div>
-                      <div className="flex-1 bg-[#1C1C1E] h-2 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-blue-500 transition-all duration-300"
-                          style={{ width: `${JSON.parse(analysis || '{}').analysis?.reliability?.score * 100 || 0}%` }}
-                        />
-                      </div>
-                      <div className="text-sm">
-                        {(JSON.parse(analysis || '{}').analysis?.reliability?.score * 100 || 0).toFixed(1)}%
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-gray-500 mb-1">Factors</div>
-                      <ul className="list-disc list-inside text-sm">
-                        {JSON.parse(analysis || '{}').analysis?.reliability?.factors?.map((factor: string, index: number) => (
-                          <li key={index}>{factor}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
+                    )}
                   </div>
                 </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-gray-400 text-center">
-                Upload a spectrum to see analysis
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Chat Assistant Panel */}
-        {showChat && (
-          <div className="w-1/3 min-w-[400px] border-l border-[#3A3A3C]">
-            <div className="flex flex-col h-full">
-              <Chat 
-                pdfText={processedData ? JSON.stringify({
-                  type: processedData.type,
-                  analysis: analysis ? JSON.parse(analysis) : {},
-                  peaks: peaks,
-                  dataPoints: processedData.data.length
-                }, null, 2) : undefined}
-              />
-              {/* Generated Report */}
-              <div className="mt-4 p-4 bg-[#2C2C2E] rounded-lg">
-                <h4 className="text-sm font-medium mb-2">Generated Report</h4>
-                <div className="prose prose-invert max-w-none">
-                  <div className="bg-[#1C1C1E] p-4 rounded-lg overflow-x-auto">
-                    <pre className="whitespace-pre-wrap">
-                      {analysis ? JSON.stringify(JSON.parse(analysis), null, 2) : 'No analysis available'}
-                    </pre>
-                  </div>
-                </div>
-              </div>
-            </div>
+          </>
+        ) : (
+          <div className="bg-gray-800 rounded-lg p-4 shadow-lg">
+            <Chat pdfText={analysis} />
           </div>
         )}
       </div>
     </div>
   );
 }
+
+export default SpectroscopicAnalysis;

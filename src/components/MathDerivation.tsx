@@ -7,33 +7,27 @@ import { Calculator } from 'lucide-react';
 import 'mafs/core.css';
 import * as math from 'mathjs';
 
+interface VisualizationData {
+  type: 'text' | 'function' | 'vector';
+  content?: string;
+  fn?: (x: number) => number;
+  start?: [number, number];
+  end?: [number, number];
+  angle?: number;
+  scale?: number;
+  x?: number;
+  y?: number;
+}
+
 interface DerivationStep {
   latex: string;
   explanation: string;
   visualization?: {
     type: 'function' | 'transform' | 'vector' | 'point';
     data: {
-      before: {
-        type: 'text' | 'function' | 'vector';
-        content?: string;
-        fn?: (x: number) => number;
-        start?: [number, number];
-        end?: [number, number];
-      };
-      after: {
-        type: 'text' | 'function' | 'vector';
-        content?: string;
-        fn?: (x: number) => number;
-        start?: [number, number];
-        end?: [number, number];
-      };
-      intermediates?: Array<{
-        type: 'text' | 'function' | 'vector';
-        content?: string;
-        fn?: (x: number) => number;
-        start?: [number, number];
-        end?: [number, number];
-      }>;
+      before: VisualizationData;
+      after: VisualizationData;
+      intermediates?: VisualizationData[];
     };
     transformType?: 'translation' | 'rotation' | 'scale';
   };
@@ -62,25 +56,6 @@ const EXAMPLE_DERIVATIONS = [
   }
 ];
 
-interface PointProps {
-  x: number;
-  y: number;
-  color: string;
-  size?: number; // Add size as optional prop
-}
-
-interface DrawableElement {
-  type: "function" | "text" | "vector";
-  content?: string;
-  fn?: ((x: number) => number);
-  start?: [number, number];
-  end?: [number, number];
-  x?: number;
-  y?: number;
-  angle?: number;
-  scale?: number;
-}
-
 export function MathDerivation() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -95,7 +70,6 @@ export function MathDerivation() {
   const animationSpeed = 1;
   const [currentTransform, setCurrentTransform] = useState({ x: 0, y: 0, angle: 0, scale: 1 });
   const [showGeoGebra, setShowGeoGebra] = useState(false);
-  const _containerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number>();
   const service = useOpenAIStore((state) => state.service);
 
@@ -159,113 +133,62 @@ export function MathDerivation() {
   const renderVisualization = (step: DerivationStep) => {
     if (!step.visualization) return null;
 
-    const { type, data, transformType } = step.visualization;
-    const viewBox = { x: [-5, 5], y: [-5, 5] };
+    const { type, data } = step.visualization;
+    const viewBox = { x: [-5, 5] as [number, number], y: [-5, 5] as [number, number] };
     const t = animationTime % (2 * Math.PI);
+    const graphHeight = dimensions.height - 200;
 
-    try {
-      const { type, data } = step.visualization;
-      const viewBox = { x: [-5, 5] as [number, number], y: [-5, 5] as [number, number] };
-      const t = animationTime % (2 * Math.PI); // Cycle animation every 2π seconds
-      const graphHeight = dimensions.height - 200; // Increased height for better visibility
-
-      return (
-        <div className="w-full bg-[#1C1C1E] rounded-lg overflow-hidden mb-8" style={{ height: graphHeight }}>
-          <Mafs
-            viewBox={{ x: [-5, 5], y: [-5, 5] }}
-            preserveAspectRatio={false}
-            width={dimensions.width - 48}
-            height={graphHeight}
-          >
-            <Coordinates.Cartesian />
-            
-            {type === 'transform' && (
-              <Transform matrix={[
-                [Math.cos(currentTransform.angle) || 1, -Math.sin(currentTransform.angle) || 0, currentTransform.x || 0],
-                [Math.sin(currentTransform.angle) || 0, Math.cos(currentTransform.angle) || 1, currentTransform.y || 0],
-                [0, 0, 1]
-              ]}>
-                {/* Render the mathematical element being transformed */}
-                {data.before.type === 'text' && (
-                  <Text x={0} y={0} attach="w" size={20} color={Theme.blue}>
-                    {data.before.content}
-                  </Text>
-                )}
-                {data.before.type === 'function' && (
-                  <Plot.OfX 
-                    y={(x) => {
-                      try {
-                        const result = data.before.fn?.(x);
-                        return typeof result === 'number' && isFinite(result) ? result : 0;
-                      } catch {
-                        return 0;
-                      }
-                    }}
-                    color={Theme.blue}
-                  />
-                )}
-              </Transform>
-            )}
-            
-            {type === 'vector' && (
-              <>
-                <Vector
-                  tip={[
-                    (data.before.start?.[0] || 0) + ((data.after.end?.[0] || 0) - (data.before.start?.[0] || 0)) * ((1 + Math.sin(t)) / 2),
-                    (data.before.start?.[1] || 0) + ((data.after.end?.[1] || 0) - (data.before.start?.[1] || 0)) * ((1 + Math.sin(t)) / 2)
-                  ]}
-                  tail={[0, 0]}
-                  color={Theme.blue}
-                />
-                {/* Enhanced ripple effect */}
-                {[0.5, 1, 1.5, 2].map((scale, i) => (
-                  <Point
-                    key={i}
-                    x={data.before.start?.[0] || 0}
-                    y={data.before.start?.[1] || 0}
-                    color={{ ...Theme.blue, alpha: Math.max(0, (1 - (t % 1)) / scale) }}
-                    size={15 * scale * (t % 1)}
-                  />
-                ))}
-              </>
-            )}
-
-            {type === 'function' && data.before.fn && (
-              <>
-                {/* Animated function plot */}
+    return (
+      <div className="w-full bg-[#1C1C1E] rounded-lg overflow-hidden mb-8" style={{ height: graphHeight }}>
+        <Mafs
+          viewBox={viewBox}
+          preserveAspectRatio={false}
+          width={dimensions.width - 48}
+          height={graphHeight}
+        >
+          <Coordinates.Cartesian />
+          
+          {type === 'transform' && (
+            <Transform matrix={[
+              [Math.cos(currentTransform.angle) || 1, -Math.sin(currentTransform.angle) || 0, currentTransform.x || 0],
+              [Math.sin(currentTransform.angle) || 0, Math.cos(currentTransform.angle) || 1, currentTransform.y || 0],
+              [0, 0, 1]
+            ]}>
+              {data.before.type === 'text' && data.before.content && (
+                <Text x={0} y={0} attach="w" size={20} color={Theme.blue}>
+                  {data.before.content}
+                </Text>
+              )}
+              {data.before.type === 'function' && data.before.fn && (
                 <Plot.OfX 
                   y={(x) => {
                     try {
-                      const progress = (Math.sin(t) + 1) / 2;
-                      const beforeY = typeof data.before.fn === 'function' ? data.before.fn(x) : 0;
-                      const afterY = typeof data.after.fn === 'function' ? data.after.fn(x) : 0;
-                      const result = beforeY + (afterY - beforeY) * progress;
-                      return isFinite(result) ? result : 0;
-                    } catch (error) {
+                      const result = data.before.fn?.(x);
+                      return typeof result === 'number' && isFinite(result) ? result : 0;
+                    } catch {
                       return 0;
                     }
                   }}
                   color={Theme.blue}
                 />
-                {/* Multiple trace points for better visualization */}
-                <Point 
-                  x={Math.cos(t) * 3 || 0}
-                  y={0}
-                  color={Theme.red}
-                  size={8}
-                />
-              </>
-            )}
-          </Mafs>
-        </div>
-      );
-    } catch (error) {
-      console.error('Error rendering visualization:', error);
-      return null;
-    }
+              )}
+            </Transform>
+          )}
+          
+          {type === 'vector' && data.before.start && data.after.end && (
+            <Vector
+              tip={[
+                data.before.start[0] + (data.after.end[0] - data.before.start[0]) * ((1 + Math.sin(t)) / 2),
+                data.before.start[1] + (data.after.end[1] - data.before.start[1]) * ((1 + Math.sin(t)) / 2)
+              ]}
+              tail={[0, 0]}
+              color={Theme.blue}
+            />
+          )}
+        </Mafs>
+      </div>
+    );
   };
-
-  // Rest of the code remains the same...
 
   const generateDerivation = async (expression: string) => {
     if (!service) return;
@@ -366,8 +289,6 @@ export function MathDerivation() {
       setLoading(false);
     }
   };
-
-  // Rest of the code remains the same...
 
   return (
     <div className="h-full flex flex-col">
