@@ -255,7 +255,7 @@ interface CodeProps {
   children: React.ReactNode;
 }
 
-interface MarkdownComponentProps extends React.HTMLAttributes<HTMLElement> {
+interface MarkdownComponentProps {
   children: React.ReactNode;
 }
 
@@ -271,9 +271,9 @@ function ChatMessage({ message, isStreaming }: ChatMessageProps) {
           remarkPlugins={[remarkMath]}
           rehypePlugins={[rehypeKatex]}
           components={{
-            h1: ({ children }: MarkdownComponentProps) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
-            h2: ({ children }: MarkdownComponentProps) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
-            h3: ({ children }: MarkdownComponentProps) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
+            h1: ({ children }) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
+            h2: ({ children }) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
+            h3: ({ children }) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
             code: ({ inline, children, className }: CodeProps) => 
               inline ? (
                 <code className="bg-[#2C2C2E] px-1 rounded">{String(children)}</code>
