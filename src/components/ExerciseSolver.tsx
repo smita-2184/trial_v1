@@ -3,8 +3,7 @@ import { useOpenAIStore } from '../store/openai';
 import { Upload, SendHorizontal, RefreshCw, ChevronRight, Download, X, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 
-const DEEPSEEK_API_KEY = 'sk-84bedb070f484479be0d09dca0bf142b';
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+// Use OpenAI service instead of direct API calls
 
 interface ExamSubmission {
   question: string;
@@ -175,61 +174,42 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
         answerText = `[Answer from file: ${answerFile.name}] ${currentAnswer}`;
       }
       
-      const response = await fetch(DEEPSEEK_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+      const prompt = `Analyze this exam answer with detailed feedback:
+
+      Question: ${question}
+      Student Answer: ${answerText}
+      ${documentText ? `\nContext from document:\n${documentText}` : ''}
+
+      Provide a detailed analysis in this JSON format:
+      {
+        "score": number (0-100),
+        "comments": [
+          "Detailed comment 1",
+          "Detailed comment 2"
+        ],
+        "corrections": [
+          "Correction 1",
+          "Correction 2"
+        ],
+        "suggestions": [
+          "Improvement suggestion 1",
+          "Improvement suggestion 2"
+        ],
+        "conceptualUnderstanding": {
+          "strengths": ["List of well-understood concepts"],
+          "weaknesses": ["List of concepts needing improvement"]
         },
-        body: JSON.stringify({
-          model: 'deepseek-coder',
-          messages: [{
-            role: 'user',
-            content: `Analyze this exam answer with detailed feedback:
+        "learningResources": [
+          {
+            "topic": "Topic name",
+            "description": "Resource description",
+            "type": "video|article|exercise"
+          }
+        ]
+      }`;
 
-            Question: ${question}
-            Student Answer: ${answerText}
-            ${documentText ? `\nContext from document:\n${documentText}` : ''}
-
-            Provide a detailed analysis in this JSON format:
-            {
-              "score": number (0-100),
-              "comments": [
-                "Detailed comment 1",
-                "Detailed comment 2"
-              ],
-              "corrections": [
-                "Correction 1",
-                "Correction 2"
-              ],
-              "suggestions": [
-                "Improvement suggestion 1",
-                "Improvement suggestion 2"
-              ],
-              "conceptualUnderstanding": {
-                "strengths": ["List of well-understood concepts"],
-                "weaknesses": ["List of concepts needing improvement"]
-              },
-              "learningResources": [
-                {
-                  "topic": "Topic name",
-                  "description": "Resource description",
-                  "type": "video|article|exercise"
-                }
-              ]
-            }`
-          }],
-          temperature: 0.7,
-          max_tokens: 2000
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`DeepSeek API error: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const feedback = JSON.parse(data.choices[0].message.content);
+      const response = await service.generateResponse(prompt);
+      const feedback = JSON.parse(response);
 
       setExamSubmissions(prev => [...prev, {
         question,
@@ -898,61 +878,42 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
         answerText = `[Answer from file: ${answerFile.name}] ${currentAnswer}`;
       }
       
-      const response = await fetch(DEEPSEEK_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+      const prompt = `Analyze this exam answer with detailed feedback:
+
+      Question: ${question}
+      Student Answer: ${answerText}
+      ${documentText ? `\nContext from document:\n${documentText}` : ''}
+
+      Provide a detailed analysis in this JSON format:
+      {
+        "score": number (0-100),
+        "comments": [
+          "Detailed comment 1",
+          "Detailed comment 2"
+        ],
+        "corrections": [
+          "Correction 1",
+          "Correction 2"
+        ],
+        "suggestions": [
+          "Improvement suggestion 1",
+          "Improvement suggestion 2"
+        ],
+        "conceptualUnderstanding": {
+          "strengths": ["List of well-understood concepts"],
+          "weaknesses": ["List of concepts needing improvement"]
         },
-        body: JSON.stringify({
-          model: 'deepseek-coder',
-          messages: [{
-            role: 'user',
-            content: `Analyze this exam answer with detailed feedback:
+        "learningResources": [
+          {
+            "topic": "Topic name",
+            "description": "Resource description",
+            "type": "video|article|exercise"
+          }
+        ]
+      }`;
 
-            Question: ${question}
-            Student Answer: ${answerText}
-            ${documentText ? `\nContext from document:\n${documentText}` : ''}
-
-            Provide a detailed analysis in this JSON format:
-            {
-              "score": number (0-100),
-              "comments": [
-                "Detailed comment 1",
-                "Detailed comment 2"
-              ],
-              "corrections": [
-                "Correction 1",
-                "Correction 2"
-              ],
-              "suggestions": [
-                "Improvement suggestion 1",
-                "Improvement suggestion 2"
-              ],
-              "conceptualUnderstanding": {
-                "strengths": ["List of well-understood concepts"],
-                "weaknesses": ["List of concepts needing improvement"]
-              },
-              "learningResources": [
-                {
-                  "topic": "Topic name",
-                  "description": "Resource description",
-                  "type": "video|article|exercise"
-                }
-              ]
-            }`
-          }],
-          temperature: 0.7,
-          max_tokens: 2000
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`DeepSeek API error: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      const feedback = JSON.parse(data.choices[0].message.content);
+      const response = await service.generateResponse(prompt);
+      const feedback = JSON.parse(response);
 
       setExamSubmissions(prev => [...prev, {
         question,

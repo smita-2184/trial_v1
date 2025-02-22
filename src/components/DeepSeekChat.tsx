@@ -246,8 +246,7 @@ interface ChatMessageProps {
   isStreaming?: boolean;
 }
 
-const API_KEY = 'sk-84bedb070f484479be0d09dca0bf142b';
-const API_URL = 'https://api.deepseek.com/v1/chat/completions';
+import { useOpenAIStore } from '../store/openai';
 
 interface CodeProps {
   inline?: boolean;
@@ -331,58 +330,15 @@ function ChatMessage({ message, isStreaming }: ChatMessageProps) {
 
 async function sendMessage(
   messages: { role: string; content: string }[],
-  onUpdate: (content: string, thoughts: string) => void
+  onUpdate: (content: string, thoughts: string) => void,
+  service: any
 ) {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${API_KEY}`
-    },
-    body: JSON.stringify({
-      model: 'deepseek-reasoner',
-      messages,
-      temperature: 0.7,
-      max_tokens: 1000,
-      stream: true
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-
-  const reader = response.body?.getReader();
-  if (!reader) throw new Error('No reader available');
-
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let currentContent = '';
-  let currentThoughts = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split('\n');
-    buffer = lines.pop() || '';
-
-    for (const line of lines) {
-      if (line.startsWith('data: ') && line !== 'data: [DONE]') {
-        try {
-          const json = JSON.parse(line.slice(6));
-          const content = json.choices[0]?.delta?.content || '';
-          const thoughts = json.choices[0]?.delta?.reasoning_content || '';
-          
-          currentContent += content;
-          currentThoughts += thoughts;
-          onUpdate(currentContent, currentThoughts);
-        } catch (e) {
-          console.error('Error parsing streaming response:', e);
-        }
-      }
-    }
+  try {
+    const response = await service.generateResponse(messages[messages.length - 1].content);
+    onUpdate(response, 'Processed using OpenAI service');
+  } catch (error) {
+    console.error('Error generating response:', error);
+    throw error;
   }
 }
 
@@ -395,6 +351,7 @@ export function DeepSeekChat() {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioFadeRef = useRef<(() => void) | null>(null);
+  const service = useOpenAIStore((state) => state.service);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -444,6 +401,10 @@ export function DeepSeekChat() {
       }));
 
       await sendMessage(messages, (content, thoughts) => {
+        if (!service) {
+          throw new Error('OpenAI service not initialized');
+        }
+      }, service);
         streamingMessage = {
           role: 'assistant',
           content,
