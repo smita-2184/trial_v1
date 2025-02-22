@@ -71,6 +71,7 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
   const [loading, setLoading] = useState(false);
   const [answerFile, setAnswerFile] = useState<File | null>(null);
   const [expandedSteps, setExpandedSteps] = useState<{ solutionIndex: number; stepIndex: number }[]>([]);
+  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const service = useOpenAIStore((state) => state.service);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -775,6 +776,7 @@ export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
   const [loading, setLoading] = useState(false);
   const [answerFile, setAnswerFile] = useState<File | null>(null);
   const [expandedSteps, setExpandedSteps] = useState<{ solutionIndex: number; stepIndex: number }[]>([]);
+  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const service = useOpenAIStore((state) => state.service);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -1469,3 +1471,414 @@ Difficulty: ${solution.difficulty}`;
 interface BlockMathProps {
   math: string;
 }
+
+export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
+  const [question, setQuestion] = useState<string>('');
+  const [solutions, setSolutions] = useState<Solution[]>([]);
+  const [mode, setMode] = useState<Mode>('exercise');
+  const [examSubmissions, setExamSubmissions] = useState<ExamSubmission[]>([]);
+  const [currentAnswer, setCurrentAnswer] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [answerFile, setAnswerFile] = useState<File | null>(null);
+  const [expandedSteps, setExpandedSteps] = useState<{ solutionIndex: number; stepIndex: number }[]>([]);
+  const [uploadedImage, setUploadedImage] = useState<File | null>(null);
+  const service = useOpenAIStore((state) => state.service);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Function to generate questions from document
+  const generateQuestionsFromDocument = async () => {
+    if (!service || !documentText) return;
+    
+    setLoading(true);
+    try {
+      const prompt = `Generate 3 practice questions based on this document content. Format as JSON:
+      {
+        "questions": [
+          {
+            "question": "Detailed question text",
+            "type": "conceptual|calculation|analysis",
+            "difficulty": "Easy|Medium|Hard",
+            "topic": "Main topic or concept being tested",
+            "expectedAnswer": "Key points or solution approach"
+          }
+        ]
+      }
+
+      Document content:
+      ${documentText}
+
+      Guidelines:
+      1. Create diverse question types
+      2. Focus on key concepts
+      3. Include calculation problems where relevant
+      4. Ensure questions test understanding
+      5. Vary difficulty levels`;
+
+      const response = await service.generateResponse(prompt);
+      const { questions } = JSON.parse(response);
+      
+      // Set the first question
+      if (questions.length > 0) {
+        setQuestion(questions[0].question);
+      }
+
+    } catch (error) {
+      console.error('Failed to generate questions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Effect to handle document text updates
+  useEffect(() => {
+    if (documentText) {
+      // Clear any existing questions/solutions when document changes
+      setQuestion('');
+      setSolutions([]);
+      generateQuestionsFromDocument();
+    }
+  }, [documentText, service]);
+
+  const onDrop = (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setUploadedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const onAnswerFileDrop = (acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (file) {
+      setAnswerFile(file);
+    }
+  };
+
+  const { getRootProps, getInputProps } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.png', '.jpg', '.jpeg']
+    },
+    maxFiles: 1
+  });
+
+  const { getRootProps: getAnswerRootProps, getInputProps: getAnswerInputProps } = useDropzone({
+    onDrop: onAnswerFileDrop,
+    accept: {
+      'application/pdf': ['.pdf'],
+      'image/*': ['.png', '.jpg', '.jpeg']
+    },
+    maxFiles: 1
+  });
+
+  const analyzeAnswer = async () => {
+    if (!service || (!currentAnswer && !answerFile) || !question) return;
+    setLoading(true);
+
+    try {
+      let answerText = currentAnswer;
+      
+      if (answerFile) {
+        answerText = `[Answer from file: ${answerFile.name}] ${currentAnswer}`;
+      }
+      
+      const prompt = `Analyze this exam answer with detailed feedback:
+
+      Question: ${question}
+      Student Answer: ${answerText}
+      ${documentText ? `\nContext from document:\n${documentText}` : ''}
+
+      Provide a detailed analysis in this JSON format:
+      {
+        "score": number (0-100),
+        "comments": [
+          "Detailed comment 1",
+          "Detailed comment 2"
+        ],
+        "corrections": [
+          "Correction 1",
+          "Correction 2"
+        ],
+        "suggestions": [
+          "Improvement suggestion 1",
+          "Improvement suggestion 2"
+        ],
+        "conceptualUnderstanding": {
+          "strengths": ["List of well-understood concepts"],
+          "weaknesses": ["List of concepts needing improvement"]
+        },
+        "learningResources": [
+          {
+            "topic": "Topic name",
+            "description": "Resource description",
+            "type": "video|article|exercise"
+          }
+        ]
+      }`;
+
+      const response = await service.generateResponse(prompt);
+      const feedback = JSON.parse(response);
+
+      setExamSubmissions(prev => [...prev, {
+        question,
+        studentAnswer: answerText,
+        answerFile: answerFile || undefined,
+        feedback
+      }]);
+
+      setQuestion('');
+      setCurrentAnswer('');
+      setAnswerFile(null);
+
+    } catch (error) {
+      console.error('Failed to analyze answer:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!question.trim() || !service || loading) return;
+    
+    const contextPrompt = documentText 
+      ? `Context from document:\n${documentText}\n\nQuestion: ${question}`
+      : question;
+
+    setLoading(true);
+    try {
+      const prompt = `Solve this ${documentText ? 'question from the document' : 'exercise'} with detailed step-by-step explanations:
+
+${contextPrompt}
+
+Format the response as JSON with this EXACT structure:
+{
+  "question": "Original question text",
+  "steps": [
+    {
+      "explanation": "Clear explanation of this step",
+      "latex": "Mathematical notation in LaTeX (if applicable)",
+      "hint": "Helpful hint for understanding this step",
+      "visualization": {
+        "type": "graph|diagram|plot",
+        "data": {
+          "points": [[x1, y1], [x2, y2]],
+          "functions": ["x^2", "sin(x)"],
+          "labels": ["A", "B", "C"]
+        }
+      }
+    }
+  ],
+  "finalAnswer": "Complete final answer",
+  "relatedConcepts": ["Concept 1", "Concept 2"],
+  "difficulty": "Easy|Medium|Hard",
+  "practiceProblems": [
+    {
+      "question": "Similar practice question",
+      "solution": "Step-by-step solution",
+      "difficulty": "Easy|Medium|Hard"
+    }
+  ],
+  "furtherReading": [
+    {
+      "topic": "Related topic",
+      "description": "Why this is relevant",
+      "resources": ["Resource 1", "Resource 2"]
+    }
+  ]
+}
+
+Guidelines:
+1. Break down the solution into clear, logical steps
+2. Include mathematical notation in LaTeX where appropriate
+3. Add helpful hints for understanding each step
+4. Suggest visualizations where they would help
+5. Include practice problems of varying difficulty
+6. Link to related concepts and resources
+7. Maintain academic rigor and clarity`;
+
+      const response = await service.generateResponse(prompt);
+      const parsed = JSON.parse(response);
+
+      setSolutions(prev => [parsed, ...prev]);
+      setQuestion('');
+      
+      // Scroll to the new solution
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    } catch (error) {
+      console.error('Failed to generate solution:', error);
+      setSolutions(prev => [{
+        question: question,
+        steps: [{
+          explanation: "Sorry, I encountered an error generating the solution. Please try again.",
+          hint: "If the problem persists, try rephrasing your question."
+        }],
+        finalAnswer: "Error occurred",
+        relatedConcepts: [],
+        difficulty: "Medium",
+        practiceProblems: [],
+        furtherReading: []
+      }, ...prev]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleStepExpansion = (solutionIndex: number, stepIndex: number) => {
+    setExpandedSteps(prev => {
+      const isExpanded = prev.some(
+        step => step.solutionIndex === solutionIndex && step.stepIndex === stepIndex
+      );
+      
+      if (isExpanded) {
+        return prev.filter(
+          step => !(step.solutionIndex === solutionIndex && step.stepIndex === stepIndex)
+        );
+      } else {
+        return [...prev, { solutionIndex, stepIndex }];
+      }
+    });
+  };
+
+  const isStepExpanded = (solutionIndex: number, stepIndex: number) => {
+    return expandedSteps.some(
+      step => step.solutionIndex === solutionIndex && step.stepIndex === stepIndex
+    );
+  };
+
+  const downloadSolution = (solution: Solution) => {
+    const content = `Exercise Solution
+
+Question:
+${solution.question}
+
+Step-by-Step Solution:
+${solution.steps.map((step, index) => `
+Step ${index + 1}:
+${step.explanation}
+${step.hint ? `\nHint: ${step.hint}` : ''}`).join('\n')}
+
+Final Answer:
+${solution.finalAnswer}
+
+Related Concepts:
+${solution.relatedConcepts.join(', ')}
+
+Difficulty: ${solution.difficulty}`;
+
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'exercise-solution.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="h-full flex flex-col gap-4 p-4 bg-[#1C1C1E] rounded-lg">
+      {/* Header */}
+      <div className="bg-[#2C2C2E] p-4 rounded-lg sticky top-0 z-10">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">Exercise Solver</h2>
+        </div>
+          <div className="flex items-center gap-4">
+            {documentText && (
+              <button
+                onClick={generateQuestionsFromDocument}
+                className="flex items-center gap-2 px-3 py-1.5 bg-[#3A3A3C] rounded-lg hover:bg-[#4A4A4C] transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Generate New Questions
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setMode('exercise')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                mode === 'exercise' ? 'bg-blue-500' : 'bg-[#3A3A3C] hover:bg-[#4A4A4C]'
+              }`}
+            >
+              Exercise Mode
+            </button>
+            <button
+              onClick={() => setMode('exam')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                mode === 'exam' ? 'bg-blue-500' : 'bg-[#3A3A3C] hover:bg-[#4A4A4C]'
+              }`}
+            >
+              Practice Exam
+            </button>
+          </div>
+        <p className="text-sm text-gray-400 mt-1">
+          {mode === 'exercise' 
+            ? 'Upload an image of your exercise or type your question to get a detailed step-by-step solution'
+            : 'Upload your exam question and answer for detailed feedback and scoring'
+          }
+        </p>
+      </div>
+
+      {/* Input Form */}
+      <form onSubmit={handleSubmit} className="space-y-4 bg-[#2C2C2E] p-4 rounded-lg">
+        {/* Question Input */}
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder={documentText ? "Type your question about the document..." : "Type your question here..."}
+            className="flex-1 bg-[#1C1C1E] rounded-lg px-4 py-3 border-2 border-[#3A3A3C] focus:border-blue-500 focus:outline-none transition-colors"
+          />
+          <button
+            type="submit"
+            disabled={loading || !question.trim()}
+            className="px-6 py-3 bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:hover:bg-blue-500 flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Solving...
+              </>
+            ) : (
+              <>
+                <SendHorizontal className="w-4 h-4" />
+                Solve
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+
+      {/* Solutions */}
+      <div className="flex-1 space-y-6 overflow-y-auto">
+        {mode === 'exam' && (
+          <div className="bg-[#2C2C2E] rounded-lg p-6 border border-[#3A3A3C]">
+            <h3 className="text-lg font-medium mb-4">Practice Exam</h3>
+            
+            {/* Question Input */}
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium mb-2">Question</label>
+                <textarea
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  placeholder="Enter or paste the exam question here..."
+                  className="w-full h-32 bg-[#1C1C1E] rounded-lg px-4 py-3 border-2 border-[#3A3A3C] focus:border-blue-500 focus:outline-none transition-colors resize-none"
+                />
+              </div>
+
+              {/* Answer Section */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Your Answer</label>
+                <div className="space-y-4">
+                  <textarea
+                    value={currentAnswer}
+                    onChange={(e) => setCurrentAnswer(e.target.value)}
+                    placeholder="Write your answer here..."
+                    className="w-full h-

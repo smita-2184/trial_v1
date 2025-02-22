@@ -101,6 +101,8 @@ export function MathDerivation() {
       const { before = {}, after = {} } = steps[currentStep].visualization.data;
       const progress = (Math.sin(animationTime) + 1) / 2; // Oscillate between 0 and 1
       
+      const steps: Step[] = [];
+      
       switch (steps[currentStep].visualization.transformType) {
         case 'translation':
           setCurrentTransform({

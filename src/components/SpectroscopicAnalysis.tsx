@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useOpenAIStore } from '../store/openai';
-import { Upload, SendHorizontal, RefreshCw, Download, FileText, X, ChevronRight, Image, FileOutput, Activity } from 'lucide-react';
+import { RefreshCw, ChevronRight } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { Chat } from './Chat';
 import Plot from 'react-plotly.js';
@@ -301,11 +301,11 @@ export function SpectroscopicAnalysis() {
       setAnalysis(response);
 
       // Update plot with identified peaks
-      const plotData = [
+      const plotData: Partial<Plotly.PlotData>[] = [
         {
           x: data.map(point => point[0]),
           y: data.map(point => point[1]),
-          type: 'scatter',
+          type: 'scatter' as const,
           mode: 'lines',
           name: 'Spectrum',
           line: { color: '#4299E1' }
@@ -313,7 +313,7 @@ export function SpectroscopicAnalysis() {
         {
           x: peakData.map(peak => peak.position),
           y: peakData.map(peak => peak.intensity),
-          type: 'scatter',
+          type: 'scatter' as const,
           mode: 'markers+text',
           name: 'Peaks',
           text: peakData.map((_, i) => `Peak ${i + 1}`),

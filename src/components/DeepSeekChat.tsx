@@ -248,13 +248,13 @@ interface ChatMessageProps {
 
 import { useOpenAIStore } from '../store/openai';
 
-interface CodeProps {
+interface CodeProps extends React.HTMLAttributes<HTMLElement> {
   inline?: boolean;
   className?: string;
   children: React.ReactNode;
 }
 
-interface MarkdownComponentProps {
+interface MarkdownComponentProps extends React.HTMLAttributes<HTMLElement> {
   children: React.ReactNode;
   className?: string;
 }
@@ -274,9 +274,9 @@ function ChatMessage({ message, isStreaming }: ChatMessageProps) {
             h1: ({ children }) => <h1 className="text-2xl font-bold mb-4">{children}</h1>,
             h2: ({ children }) => <h2 className="text-xl font-bold mb-3">{children}</h2>,
             h3: ({ children }) => <h3 className="text-lg font-bold mb-2">{children}</h3>,
-            code: ({ inline, children, className }) => 
+            code: ({ inline, className, children, ...props }: CodeProps) => 
               inline ? (
-                <code className={`bg-[#2C2C2E] px-1 rounded ${className || ''}`}>{children}</code>
+                <code className={`bg-[#2C2C2E] px-1 rounded ${className || ''}`} {...props}>{children}</code>
               ) : (
                 <pre className="bg-[#2C2C2E] p-4 rounded-lg overflow-x-auto">
                   <code className={className || ''}>{children}</code>

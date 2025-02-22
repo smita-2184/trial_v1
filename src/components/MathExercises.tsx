@@ -52,18 +52,10 @@ export function MathExercises() {
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<MathResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [plotDimensions, setPlotDimensions] = useState({ width: 400, height: 300 });
   const [expandedSteps, setExpandedSteps] = useState<{ resultIndex: number; stepIndex: number }[]>([]);
   const [loadingExplanation, setLoadingExplanation] = useState<{ resultIndex: number; stepIndex: number } | null>(null);
-  const [dimensions, setDimensions] = useState({
-    width: window.innerWidth - 700,
-    height: window.innerHeight - 100
-  });
   const [showCalculator, setShowCalculator] = useState(false);
   const plotContainerRef = useRef<HTMLDivElement>(null);
-  const molViewerRef = useRef<HTMLIFrameElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const viewerRef = useRef<HTMLDivElement>(null);
   const viewBox = { x: [-5, 5] as [number, number], y: [-5, 5] as [number, number] };
   const service = useOpenAIStore((state) => state.service);
 
