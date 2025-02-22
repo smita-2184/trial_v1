@@ -255,7 +255,7 @@ interface CodeProps {
   children: React.ReactNode;
 }
 
-interface MarkdownComponentProps {
+interface MarkdownComponentProps extends React.HTMLAttributes<HTMLElement> {
   children: React.ReactNode;
 }
 

@@ -1,9 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useOpenAIStore } from '../store/openai';
 import { Upload, SendHorizontal, RefreshCw, ChevronRight, Download, X, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
-import { BlockMath } from 'react-katex';
 import { useDropzone } from 'react-dropzone';
-import 'katex/dist/katex.min.css';
 
 const DEEPSEEK_API_KEY = 'sk-84bedb070f484479be0d09dca0bf142b';
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
@@ -63,10 +61,6 @@ interface Solution {
 
 interface ExerciseSolverProps {
   documentText: string;
-}
-
-interface BlockMathProps {
-  math: string;
 }
 
 export function ExerciseSolver({ documentText }: ExerciseSolverProps) {
